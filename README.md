@@ -8,16 +8,18 @@ documentation.
 
 ## Install
 
+Install using:
+
 ``` sh
 pip install xcube
+```
+
+or
+
+``` sh
+conda install xcube
 ```
 
 ## How to use
 
 Fill me in please! Don’t forget code examples:
-
-``` python
-1+1
-```
-
-    2

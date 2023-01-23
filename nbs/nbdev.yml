@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "xcube"
+  site-url: "https://debjyotiSRoy.github.io/xcube"
+  description: "Extreme Multi-Label Text Classification"
+  repo-branch: main
+  repo-url: "https://github.com/debjyotiSRoy/xcube"

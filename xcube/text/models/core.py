@@ -16,18 +16,18 @@ _model_meta = {AWD_LSTM: {'hid_name':'emb_sz', 'url':URLs.WT103_FWD, 'url_bwd':U
                           'config_lm':awd_lstm_lm_config, 'split_lm': awd_lstm_lm_split,
                           'config_clas':awd_lstm_clas_config, 'split_clas': awd_lstm_clas_split},}
 
-# %% ../../../nbs/02_text.models.core.ipynb 7
+# %% ../../../nbs/02_text.models.core.ipynb 8
 class SequentialRNN(nn.Sequential):
     "A sequential pytorch module that passes the reset call to its children."
     def reset(self):
         for c in self.children(): getattr(c, 'reset', noop)()
 
-# %% ../../../nbs/02_text.models.core.ipynb 9
+# %% ../../../nbs/02_text.models.core.ipynb 10
 def _pad_tensor(t, bs):
     if t.size(0) < bs: return torch.cat([t, t.new_zeros(bs-t.size(0), *t.shape[1:])])
     return t
 
-# %% ../../../nbs/02_text.models.core.ipynb 10
+# %% ../../../nbs/02_text.models.core.ipynb 11
 class SentenceEncoder(Module):
     "Create an encoder over `module` that can process a full sentence."
     def __init__(self, bptt, module, pad_idx=1, max_len=None): store_attr('bptt,module,pad_idx,max_len')
@@ -49,7 +49,7 @@ class SentenceEncoder(Module):
         mask = torch.cat(masks, dim=1)
         return outs,mask
 
-# %% ../../../nbs/02_text.models.core.ipynb 13
+# %% ../../../nbs/02_text.models.core.ipynb 14
 class AttentiveSentenceEncoder(Module):
     "Create an encoder over `module` that can process a full sentence."
     def __init__(self, bptt, module, pad_idx=1, max_len=None): store_attr('bptt,module,pad_idx,max_len')
@@ -71,7 +71,7 @@ class AttentiveSentenceEncoder(Module):
         mask = torch.cat(masks, dim=1)
         return outs,mask
 
-# %% ../../../nbs/02_text.models.core.ipynb 16
+# %% ../../../nbs/02_text.models.core.ipynb 17
 def masked_concat_pool(output, mask, bptt):
     "Pool `MultiBatchEncoder` outputs into one vector [last_hidden, max_pool, avg_pool]"
     lens = output.shape[1] - mask.long().sum(dim=1)
@@ -82,7 +82,7 @@ def masked_concat_pool(output, mask, bptt):
     x = torch.cat([output[torch.arange(0, output.size(0)),-last_lens-1], max_pool, avg_pool], 1) #Concat pooling.
     return x
 
-# %% ../../../nbs/02_text.models.core.ipynb 18
+# %% ../../../nbs/02_text.models.core.ipynb 19
 class PoolingLinearClassifier(Module):
     "Create a linear classifier with pooling"
     def __init__(self, dims, ps, bptt, y_range=None):
@@ -99,7 +99,7 @@ class PoolingLinearClassifier(Module):
         x = self.layers(x)
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 25
+# %% ../../../nbs/02_text.models.core.ipynb 26
 class OurPoolingLinearClassifier(Module):
     def __init__(self, dims, ps, bptt, y_range=None):
         self.layer = LinBnDrop(dims[0], dims[1], p=ps, act=None)
@@ -111,7 +111,7 @@ class OurPoolingLinearClassifier(Module):
         x = self.layer(x)
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 29
+# %% ../../../nbs/02_text.models.core.ipynb 30
 class LabelAttentionClassifier(Module):
     def __init__(self, dims, ps, bptt, y_range=None):
         self.fts = dims[0]
@@ -130,7 +130,7 @@ class LabelAttentionClassifier(Module):
         x = (self.final_lin.weight * x).sum(dim=2)
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 30
+# %% ../../../nbs/02_text.models.core.ipynb 31
 class LabelAttentionClassifier2(Module):
     initrange=0.1
     def __init__(self, dims, ps, bptt, y_range=None):
@@ -174,7 +174,7 @@ class LabelAttentionClassifier2(Module):
         # x = x.view(x.shape[0], x.shape[1])
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 31
+# %% ../../../nbs/02_text.models.core.ipynb 32
 class LabelAttentionClassifier3(Module):
     initrange=0.1
     def __init__(self, dims, ps, bptt, y_range=None):
@@ -196,7 +196,7 @@ class LabelAttentionClassifier3(Module):
         
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 35
+# %% ../../../nbs/02_text.models.core.ipynb 36
 def get_text_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., lin_ftrs=None,
                        ps=None, pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"

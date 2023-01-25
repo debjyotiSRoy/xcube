@@ -8,3 +8,8 @@ website:
       - 03_text.learner.ipynb
       - 04_metrics.ipynb
       - 05_collab.ipynb
+      - 06_data.transforms.ipynb
+      - 07_l2r.models.core.ipynb
+      - 08_l2r.gradients.ipynb
+      - 09_l2r.learner.ipynb
+      - 10_l2r.data.load.ipynb

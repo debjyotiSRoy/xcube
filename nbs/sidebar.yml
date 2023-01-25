@@ -4,3 +4,7 @@ website:
       - index.ipynb
       - 00_utils.ipynb
       - 01_layers.ipynb
+      - 02_text.models.core.ipynb
+      - 03_text.learner.ipynb
+      - 04_metrics.ipynb
+      - 05_collab.ipynb

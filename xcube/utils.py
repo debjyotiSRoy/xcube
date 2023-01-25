@@ -10,12 +10,12 @@ from sklearn.manifold import TSNE
 from fastcore.all import *
 from .imports import *
 
-# %% ../nbs/00_utils.ipynb 6
+# %% ../nbs/00_utils.ipynb 5
 def namestr(obj, namespace=None):
     "Returns the name of the object `obj` passed"
     return [name for name in namespace if namespace[name] is obj]
 
-# %% ../nbs/00_utils.ipynb 9
+# %% ../nbs/00_utils.ipynb 8
 def list_files(startpath):
     """ [simulates the linux tree cmd] 
     (https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python)
@@ -28,7 +28,7 @@ def list_files(startpath):
         for f in files:
             print('{}{}'.format(subindent, f))
 
-# %% ../nbs/00_utils.ipynb 10
+# %% ../nbs/00_utils.ipynb 9
 def make_paths(path, prefix=None):
     """
     with `path` as basedir, makes data and models dir and 
@@ -76,7 +76,7 @@ def make_paths(path, prefix=None):
     for o in plist:  pdir[namestr(o, locals())[0]] = o
     return pdir
 
-# %% ../nbs/00_utils.ipynb 12
+# %% ../nbs/00_utils.ipynb 11
 def plot_hist(data, x_label=None, y_label=None, title="Histogram"):
     n, bins, pathches = plt.hist(data)
     plt.grid(axis='y', color='b')
@@ -87,7 +87,7 @@ def plot_hist(data, x_label=None, y_label=None, title="Histogram"):
     plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
     plt.title(title);
 
-# %% ../nbs/00_utils.ipynb 13
+# %% ../nbs/00_utils.ipynb 12
 def plot_reduction(X, tSNE=True, n_comps=None, perplexity=30, figsize=(6,4)):
     """
     PCA on X and plots the first two principal components, returns the decomposition 

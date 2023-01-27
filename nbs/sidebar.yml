@@ -13,3 +13,5 @@ website:
       - 08_l2r.gradients.ipynb
       - 09_l2r.learner.ipynb
       - 10_l2r.data.load.ipynb
+      - 11_l2r.callbacks.ipynb
+      - 12_data.external.ipynb

@@ -1,4 +1,7 @@
+from fastai.imports import *
+
 import numpy as np
+import pandas as pd
 from scipy.stats import *
 import matplotlib.pyplot as plt
 import seaborn as sns

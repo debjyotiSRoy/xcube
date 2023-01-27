@@ -8,7 +8,7 @@ from ..imports import *
 import xcube.data
 
 # %% auto 0
-__all__ = ['xcube_cfg', 'xcube_path', 'XURLs']
+__all__ = ['xcube_cfg', 'xcube_path', 'XURLs', 'untar_xxx']
 
 # %% ../../nbs/12_data.external.ipynb 7
 @lru_cache(maxsize=None)
@@ -29,8 +29,8 @@ class XURLs():
     S3 = 'https://xcubebucket.s3.us-east-2.amazonaws.com/'
     
     #main datasets
-    MIMIC3 = ''
-    MIMIC3_L2R = f'{S3}mimic/mimic3.tgz'
+    MIMIC3 = f'{S3}mimic3/'
+    MIMIC3_L2R = f'{MIMIC3}mimic3_l2r/mimic3_l2r.tgz'
     
     def path(
         url:str='.', # File to download
@@ -41,3 +41,16 @@ class XURLs():
         local_path = XURLs.LOCAL_PATH/('models' if c_key=='model' else 'data')/fname
         if local_path.exists(): return local_path
         return xcube_path(c_key)/fname
+
+# %% ../../nbs/12_data.external.ipynb 18
+def untar_xxx(
+    url:str, # File to download
+    archive:Path=None, # Optional override for `Config`'s `archive` key
+    data:Path=None, # Optional override for `Config`'s `data` key
+    c_key:str='data', # Key in `Config` where to extract file
+    force_download:bool=False, # Setting to `True` will overwrite any existing copy of data
+    base:str='~/.xcube' # Directory containing config file and base of relative paths
+) -> Path: # Path to extracted file(s)
+    "Download `url` using `FastDownload.get`"
+    d = FastDownload(xcube_cfg(), module=xcube.data, archive=archive, data=data, base=base)
+    return d.get(url, force=force_download, extract_key=c_key)

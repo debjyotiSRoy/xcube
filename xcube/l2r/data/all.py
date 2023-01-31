@@ -1,2 +1,2 @@
 from .load import *
-from .boot import *
+from .info_gain import *

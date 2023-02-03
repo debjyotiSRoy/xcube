@@ -22,7 +22,12 @@ class BatchLbsChunkify(ItemTransform):
 
 # %% ../../../nbs/13_l2r.data.info_gain.ipynb 7
 class MutualInfoGain:
-    def __init__(self, df, bs=8, chnk_sz=200, device=None): store_attr('df,bs,chnk_sz,device')
+    def __init__(self, df, bs=8, chnk_sz=200, device=None, lbs_desc=None): 
+        store_attr(but='lbs_desc')
+        if lbs_desc is not None:
+            try:
+                with open(lbs_desc, 'rb') as f: self.lbs_desc = pickle.load(f)
+            except FileNotFoundError as e: print(e)
     
     def onehotify(self):
         x_tfms = [Tokenizer.from_df('text', n_workers=num_cpus()), attrgetter("text"), Numericalize(), OneHotEncode()]
@@ -83,12 +88,36 @@ class MutualInfoGain:
         H_L = -(p_L * torch.log(p_L+eps)).sum(-1).squeeze(); test_eq(H_L.shape, [lblsize])
         I_TL = (self.p_TL_full * torch.log((self.p_TL_full + eps)/(p_TxL + eps))).flatten(start_dim=-2).sum(-1); test_eq(I_TL.shape, (toksize, lblsize))
         return p_T, p_L, p_TxL, H_T, H_L, I_TL
+    
+    @property
+    def lbs_frqs(self):
+        f = ColReader('labels', label_delim=';')
+        self._frqs = Counter()
+        for o in self.df.itertuples(): self._frqs.update(f(o))
+        return self._frqs
 
-# %% ../../../nbs/13_l2r.data.info_gain.ipynb 8
-@property
+# %% ../../../nbs/13_l2r.data.info_gain.ipynb 9
 @patch
-def lbs_frqs(self:MutualInfoGain):
-    f = ColReader('labels', label_delim=';')
-    self._frqs = Counter()
-    for o in self.df.itertuples(): self._frqs.update(f(o))
-    return self._frqs
+def _gen(self:MutualInfoGain, p_TL, p_T, p_L, info, H_T, H_L, k=5):
+    toks, lbs = array(self.dsets.vocab[0]), self.dsets.vocab[1]
+    sorted_by_tok, tok_idxs = torch.sort(info, dim=0, descending=True) 
+    for i,o in enumerate(lbs):
+        topk_tok_idxs = tok_idxs[:k, i].cpu()
+        topk_toks = toks[topk_tok_idxs]
+        topk_toks_probs = p_T.squeeze()[:,0][topk_tok_idxs].cpu().numpy()
+        topk_info_gains = sorted_by_tok[:k, i].cpu().numpy()
+        topk_jnt_probs = p_TL[topk_tok_idxs, [i]][:,0,0].cpu().numpy()
+        lbl_entropy = H_L[i].cpu().numpy()
+        topk_tok_entrops = H_T[topk_tok_idxs].cpu().numpy()
+        yield (o, self.lbs_frqs[o], p_L[i][0,0].cpu().numpy(), lbl_entropy, self.lbs_desc.get(o, 'Not Found'), 
+               array(list(zip(topk_toks, topk_toks_probs, topk_tok_entrops, topk_jnt_probs, topk_info_gains))))
+
+# %% ../../../nbs/13_l2r.data.info_gain.ipynb 10
+@patch
+def show(self:MutualInfoGain, *args, save_as=None, **kwargs):
+    _data = self._gen(*args, **kwargs)
+    df = pd.DataFrame(_data, columns=['label', 'freq', 'prob', 'entropy', 'description', 'top-k (token, prob, entropy, joint, info)'],)
+    df[['prob', 'entropy',]] = df[['prob', 'entropy']].astype(np.float)
+    df[['top-k (token, prob, entropy, joint, info)']] = df[['top-k (token, prob, entropy, joint, info)']].astype(np.str_) 
+    if save_as is not None: df.to_feather(save_as)
+    return df

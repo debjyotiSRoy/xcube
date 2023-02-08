@@ -8,3 +8,4 @@ from .callbacks import *
 from .gradients import *
 from .learner import *
 from ..utils import *
+from ..metrics import *

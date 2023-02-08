@@ -4,6 +4,7 @@
 __all__ = ['PreLoadTrans', 'L2RDataLoader']
 
 # %% ../../../nbs/10_l2r.data.load.ipynb 2
+from PIL import Image
 from fastai.torch_imports import *
 from fastai.data.load import DataLoader
 from ...imports import *
@@ -122,7 +123,7 @@ def datasets(self:PreLoadTrans):
     self.trn_dset = self.scored_toks
     return self.trn_dset, self.val_dset
 
-# %% ../../../nbs/10_l2r.data.load.ipynb 11
+# %% ../../../nbs/10_l2r.data.load.ipynb 12
 class L2RDataLoader(DataLoader):
     def __init__(self, *args, **kwargs):
         self.sl, self.lbs_chunks = kwargs.pop('sl', None), kwargs.pop('lbs_chunks', None)
@@ -143,8 +144,6 @@ class L2RDataLoader(DataLoader):
     
     def create_batch(self, start_idx):
         return self.dset[start_idx: min(start_idx+self.bs, self.dset.shape[0])]
-        # if self.device: to_device(btch, self.device)
-        # return btch
         
     def __len__(self):
         return int(np.ceil((np.ceil(self.dataset.shape[1]/self.sl) * self.lbs_chunks)/self.bs))
@@ -153,7 +152,6 @@ class L2RDataLoader(DataLoader):
         # shuffling
         randperm = torch.randint(low=0, high=self.dataset.shape[1], size=(self.dataset.shape[1],))
         self.dataset = self.dataset[:, randperm]
-        # self.lbs_chunks = 4
         size_of_dim0 = torch.ceil(self.dataset.new_empty(1).fill_(self.dataset.shape[0]/self.lbs_chunks)).item()
         pad_len_dim0 = int(self.lbs_chunks * np.floor(self.dataset.shape[0]/self.lbs_chunks) + self.lbs_chunks - self.dataset.shape[0])
         self.dataset_pad = F.pad(self.dataset, (0,0,0,0,0,pad_len_dim0), value=-1)
@@ -164,40 +162,13 @@ class L2RDataLoader(DataLoader):
         deficit = self.sl - trn_sqs[-1].shape[1]
         if deficit: 
             test_eq(trn_sqs[-1].shape, (self.dataset_pad.shape[0], self.dataset_pad.shape[1]%self.sl,4));
-            # trn_sqs[-1] = torch.concat((trn_sqs[-1], self.dataset_pad.new_empty((trn_sqs[-1].shape[0], deficit,3)).fill_(-1)), dim=1)
             trn_sqs[-1] = trn_sqs[-1].repeat_interleave(self.sl//trn_sqs[-1].shape[1], dim=1)
         test_eq(trn_sqs[-1].shape, (self.dataset_pad.shape[0], self.sl,4));
-        # self.dset = torch.concat(trn_sqs)
-        # self.dset = torch.stack(trn_sqs)
         
         trn_sqs = map(partial(torch.chunk, chunks=self.lbs_chunks), trn_sqs)
         trn_sqs = itertools.chain.from_iterable(trn_sqs)
         self.dset = trn_sqs
-        # test_eq(self.dset.shape, (self.dataset_pad.shape[0]*len(trn_sqs), self.sl, 3))
-        # test_eq(self.dset.shape, (len(trn_sqs), self.dataset_pad.shape[0], self.sl, 3))
-        # print(f"{self.dset.shape=}")
-        # yield from (btch for btch in dset.split(self.bs))
     
     def create_batches(self, samps):
-            # trn_sqs = list(torch.split(self.dataset, split_size_or_sections=self.sl, dim=1))
-            # test_eq(len(trn_sqs), np.ceil(self.dataset.shape[1]/self.sl))
-            # test_eq(trn_sqs[-1].shape, (self.dataset.shape[0], self.dataset.shape[1]%self.sl,3))
-            # deficit = self.sl - trn_sqs[-1].shape[1]
-            # if deficit: 
-            #     test_eq(trn_sqs[-1].shape, (self.dataset.shape[0], self.dataset.shape[1]%self.sl,3));
-            #     trn_sqs[-1] = torch.concat((trn_sqs[-1], self.dataset.new_empty((trn_sqs[-1].shape[0], deficit,3)).fill_(-1)), dim=1)
-            # test_eq(trn_sqs[-1].shape, (self.dataset.shape[0], self.sl,3));
-            # # self.dset = torch.concat(trn_sqs)
-            # self.dset = torch.stack(trn_sqs)
-            # # test_eq(self.dset.shape, (self.dataset.shape[0]*len(trn_sqs), self.sl, 3))
-            # test_eq(self.dset.shape, (len(trn_sqs), self.dataset.shape[0], self.sl, 3))
-            # print(f"{self.dset.shape=}")
-            # # yield from (btch for btch in dset.split(self.bs))
-        # chunks = range(0, self.dset.shape[0], self.bs)
-        # with ProcessPoolExecutor(self.n_workers) as ex:
-        # with Pool(processes=self.num_workers) as pool:
-        # yield from pool.imap_unordered(self.create_batch, chunks, 16)
-        # yield from map(self.create_batch, chunks)
-        # yield from chunked(self.dset, chunk_sz=self.bs)
         yield from (torch.stack(btch) for btch in self.chunkify(self.dset))
         

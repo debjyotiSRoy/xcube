@@ -13,7 +13,7 @@ from ..imports import *
 from ..metrics import *
 from .gradients import *
 
-# %% ../../nbs/09_l2r.learner.ipynb 5
+# %% ../../nbs/09_l2r.learner.ipynb 6
 class L2RLearner:
     def __init__(self, model, dls, grad_func, loss_func, lr, cbs, opt_func=SGD, path=None):
         store_attr(but='cbs')
@@ -100,7 +100,7 @@ class L2RLearner:
     def __call__(self, name):
         for cb in self.cbs: getattr(cb, name, noop)()
 
-# %% ../../nbs/09_l2r.learner.ipynb 7
+# %% ../../nbs/09_l2r.learner.ipynb 8
 @patch
 @delegates(save_model)
 def save(self:L2RLearner, file, **kwargs):
@@ -109,7 +109,7 @@ def save(self:L2RLearner, file, **kwargs):
     save_model(file, self.model, getattr(self, 'opt', None), **kwargs)
     return file
 
-# %% ../../nbs/09_l2r.learner.ipynb 8
+# %% ../../nbs/09_l2r.learner.ipynb 9
 @patch
 @delegates(load_model)
 def load(self:L2RLearner, file, device=None, **kwargs):
@@ -121,7 +121,7 @@ def load(self:L2RLearner, file, device=None, **kwargs):
     load_model(file, self.model, self.opt, device=device, **kwargs)
     return self
 
-# %% ../../nbs/09_l2r.learner.ipynb 10
+# %% ../../nbs/09_l2r.learner.ipynb 11
 def get_learner(model, dls, grad_fn=rank_loss3, loss_fn=loss_fn2, lr=1e-5, cbs=None, opt_func=partial(SGD, mom=0.9), lambrank=False):
     if lambrank: grad_fn = partial(grad_fn, lambrank=lambrank)
     learner = L2RLearner(model, dls, grad_fn, loss_fn, lr, cbs, opt_func=opt_func)

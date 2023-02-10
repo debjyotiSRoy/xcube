@@ -150,8 +150,9 @@ class L2RDataLoader(DataLoader):
     
     def before_iter(self):
         # shuffling
-        randperm = torch.randint(low=0, high=self.dataset.shape[1], size=(self.dataset.shape[1],))
-        self.dataset = self.dataset[:, randperm]
+        # randperm = torch.randint(low=0, high=self.dataset.shape[1], size=(self.dataset.shape[1],))
+        randperm_idxs = torch.randperm(self.dataset.shape[1])
+        self.dataset = self.dataset[:, randperm_idxs]
         size_of_dim0 = torch.ceil(self.dataset.new_empty(1).fill_(self.dataset.shape[0]/self.lbs_chunks)).item()
         pad_len_dim0 = int(self.lbs_chunks * np.floor(self.dataset.shape[0]/self.lbs_chunks) + self.lbs_chunks - self.dataset.shape[0])
         self.dataset_pad = F.pad(self.dataset, (0,0,0,0,0,pad_len_dim0), value=-1)

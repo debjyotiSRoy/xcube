@@ -121,7 +121,25 @@ def load(self:L2RLearner, file, device=None, **kwargs):
     load_model(file, self.model, self.opt, device=device, **kwargs)
     return self
 
-# %% ../../nbs/09_l2r.learner.ipynb 11
+# %% ../../nbs/09_l2r.learner.ipynb 10
+@patch
+def show_results(self:L2RLearner, device=None, k=None):
+    dataset = to_device(self.dls.train.dataset, device=device)
+    xb = dataset[34:78]
+    xb = xb.unsqueeze(0)
+    preds, preds_rank, *_,  _ndcg_at_k = ndcg(self.model(xb), xb, k=k)
+    if _ndcg_at_k is not None: _ndcg_at_k.squeeze_(0) 
+    lbs = xb[:, :, :, 1].unique().cpu().numpy()
+    cols = pd.MultiIndex.from_product([lbs, ('tok', 'lbl', 'rank', 'score', 'preds', 'model_rank')], names=['label', 'key2'])
+    data = torch.concat( (xb, preds.unsqueeze(-1), preds_rank.unsqueeze(-1)), dim=-1).squeeze(0).permute(1, 0, 2).contiguous()
+    data = data.reshape(data.shape[0], -1)
+    df_results = pd.DataFrame(data, columns=cols)
+    df_results.index.name = 'toks'
+    # pd.set_option('display.max_columns', None)
+    df_ndcg = pd.DataFrame({'labels': lbs, 'ndcg_at_k':_ndcg_at_k.cpu().numpy()})
+    return df_results, df_ndcg
+
+# %% ../../nbs/09_l2r.learner.ipynb 12
 def get_learner(model, dls, grad_fn=rank_loss3, loss_fn=loss_fn2, lr=1e-5, cbs=None, opt_func=partial(SGD, mom=0.9), lambrank=False):
     if lambrank: grad_fn = partial(grad_fn, lambrank=lambrank)
     learner = L2RLearner(model, dls, grad_fn, loss_fn, lr, cbs, opt_func=opt_func)

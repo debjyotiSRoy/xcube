@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['SequentialRNN', 'SentenceEncoder', 'AttentiveSentenceEncoder', 'masked_concat_pool', 'PoolingLinearClassifier',
            'OurPoolingLinearClassifier', 'LabelAttentionClassifier', 'LabelAttentionClassifier2',
-           'LabelAttentionClassifier3', 'get_text_classifier']
+           'LabelAttentionClassifier3', 'get_xmltext_classifier']
 
 # %% ../../../nbs/02_text.models.core.ipynb 1
 from fastai.data.all import *
@@ -197,7 +197,7 @@ class LabelAttentionClassifier3(Module):
         return x, out, out
 
 # %% ../../../nbs/02_text.models.core.ipynb 36
-def get_text_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., lin_ftrs=None,
+def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., lin_ftrs=None,
                        ps=None, pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]

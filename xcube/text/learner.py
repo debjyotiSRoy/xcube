@@ -8,6 +8,7 @@ from fastai.basics import *
 from fastai.text.learner import *
 from fastai.callback.rnn import *
 from fastai.text.models.awdlstm import *
+from fastai.text.models.core import get_text_classifier
 from .models.core import *
 
 # %% ../../nbs/03_text.learner.ipynb 7
@@ -64,7 +65,7 @@ def load_collab_keys(
         sd['1.attn.lbs_weight_dp.emb.weight'] = i_weight.data.clone()
     return model.load_state_dict(sd)
 
-# %% ../../nbs/03_text.learner.ipynb 16
+# %% ../../nbs/03_text.learner.ipynb 17
 @delegates(Learner.__init__)
 class TextLearner(Learner):
     "Basic class for a `Learner` in NLP."
@@ -163,10 +164,10 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 19
+# %% ../../nbs/03_text.learner.ipynb 20
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 22
+# %% ../../nbs/03_text.learner.ipynb 23
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, **kwargs):

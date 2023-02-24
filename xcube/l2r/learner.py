@@ -40,7 +40,7 @@ class L2RLearner:
             
             self('after_backward')
             
-            # free memory
+            # free memory (TODO: Put this in a little callback)
             lambda_i = None
             import gc; gc.collect()
             torch.cuda.empty_cache()
@@ -69,6 +69,7 @@ class L2RLearner:
             self('after_validate')
         
     def _all_batches(self, *args, **kwargs):
+        self.n_iter = len(self.dl)
         for self.iter_num, self.xb in enumerate(self.dl):
             self.one_batch(*args, **kwargs)
     

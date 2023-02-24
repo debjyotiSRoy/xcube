@@ -12,6 +12,7 @@ class L2R_DotProductBias(nn.Module):
     def __init__(self, num_lbs, num_toks, num_factors, y_range=None):
         super().__init__()
         self.num_toks, self.num_lbs = num_toks+1, num_lbs+1 # +1 for the `padding_idx` 
+        self.num_factors = num_factors
         self.token_factors = nn.Embedding(self.num_toks, num_factors, padding_idx=-1)
         self.token_bias = nn.Embedding(self.num_toks, 1, padding_idx=-1)
         self.label_factors = nn.Embedding(self.num_lbs, num_factors, padding_idx=-1)
@@ -45,6 +46,7 @@ class L2R_NN(nn.Module):
     def __init__(self, num_lbs, num_toks, num_factors, n_act = 200, y_range=None):
         super().__init__()
         self.num_toks, self.num_lbs = num_toks+1, num_lbs+1 # +1 for the `padding_idx` 
+        self.num_factors, self.n_act = num_factors, n_act
         self.token_factors = nn.Embedding(self.num_toks, num_factors, padding_idx=-1)
         self.label_factors = nn.Embedding(self.num_lbs, num_factors, padding_idx=-1)
         self.y_range = y_range

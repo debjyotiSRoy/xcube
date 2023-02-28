@@ -60,7 +60,7 @@ class TrackResults(Callback):
         self.smooth_moi = AvgSmoothMetric(beta=beta) # to maintain weighted avg of metric of interest 
     
     def before_fit(self): 
-        self.losses_full, self.grads_full, self.metrics_full = [], defaultdict(list), defaultdict(list) 
+        self.lrs, self.mois, self.smooth_mois, self.losses_full, self.grads_full, self.metrics_full = [], [], [], [], defaultdict(list), defaultdict(list) 
         self.ioi = self.names.index(self.learn.save_call_back.monitor
                                   if hasattr(self.learn, 'save_call_back') else 'loss')
         self.smooth_moi.reset()
@@ -98,10 +98,18 @@ class TrackResults(Callback):
             if self.model.training:
                 if self.train_metrics: 
                     self._compute_metrics()
+                    # grab moi
                     self.learn.moi = getattr(self, "losses ndcgs ndcgs_at_6 accs".split()[self.ioi])[-1] # -1 is to get the value for the current batch
-                    print(f"{self.learn.moi = }")
+                    # do weighted avg
                     self.smooth_moi.accumulate(self.learn)
+                    # record `learn` attribute
                     self.learn.smooth_moi = self.smooth_moi.value
+                    # record moi attribute in `self`
+                    self.mois.append(self.learn.moi)
+                    # record smooth_moi attribute in `self`
+                    self.smooth_mois.append(self.learn.smooth_moi)
+                    # record lr in `self`
+                    self.lrs.append(self.opt.hypers[-1]['lr'])
             else: self._compute_metrics()
                         
     def _compute_metrics(self):
@@ -132,7 +140,7 @@ class Monitor(Callback):
         
     def after_epoch(self):
         val = self.track_results.metrics_full.get('val')[-1][self.idx]
-        if self.comp(val - self.min_delta, self.best): self.best, self.new_best, = val, True
+        if self.comp(val - self.min_delta if not isinstance(val, str) else self.best, self.best): self.best, self.new_best, = val, True
         else: self.new_best = False
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 14
@@ -168,7 +176,7 @@ from fastai.callback.schedule import *
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 21
 @patch
-def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5, pct_start=0.25, moms=None):
+def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5, pct_start=0.25, moms=None, cbs=None):
     "Fit `self.model` for `n_epoch` using the 1cycle policy."
     self.opt = getattr(self, 'opt', None)
     if self.opt is None: self.create_opt()
@@ -176,9 +184,9 @@ def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5,
     lr_max = np.array([h['lr'] for h in self.opt.hypers])
     scheds = {'lr': combined_cos(pct_start, lr_max/div, lr_max, lr_max/div_final),
               'mom': combined_cos(pct_start, *(self.moms if moms is None else moms))}
-    self.add_cb(XParamScheduler(scheds)) 
+    # self.add_cb(XParamScheduler(scheds)) 
     # pdb.set_trace()
-    self.fit(n_epoch)
+    self.fit(n_epoch, cbs=XParamScheduler(scheds)+L(cbs))
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 23
 @patch
@@ -227,12 +235,15 @@ class XLRFinder(XParamScheduler):
         if tmp_f.exists():
             self.learn.load(f'{self.tmp_p}/_tmp', with_opt=True)
             self.tmp_d.cleanup()
+            
+    def after_cancel_validate(self): pass
 
     _docs = {"before_fit": "Initialize container for hyper-parameters and save the model",
              "before_batch": "Set the proper hyper-parameters in the optimizer",
              "after_batch": "Record hyper-parameters of this batch and potentially stop training",
              "after_fit": "Save the hyper-parameters in the recorder if there is one and load the original model",
-             "before_validate": "Skip the validation part of training"}
+             "before_validate": "Skip the validation part of training",
+             "after_cancel_validate": "pass `CancelValidException`"}
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 27
 class ProgressBarCallback(Callback):

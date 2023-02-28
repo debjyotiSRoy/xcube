@@ -14,6 +14,9 @@ from ..metrics import *
 from .gradients import *
 
 # %% ../../nbs/09_l2r.learner.ipynb 6
+from fastai.callback.core import *
+
+# %% ../../nbs/09_l2r.learner.ipynb 7
 class L2RLearner:
     def __init__(self, 
         model, 
@@ -39,6 +42,22 @@ class L2RLearner:
 
     def add_cbs(self, cbs):
         L(cbs).map(self.add_cb)
+        return self
+    
+    @contextmanager
+    def added_cbs(self, cbs):
+        self.add_cbs(cbs)
+        try: yield
+        finally: self.remove_cbs(cbs)
+        
+    def remove_cbs(self, cbs):
+        L(cbs).map(self.remove_cb)
+        return self
+    
+    def remove_cb(self, cb):
+        cb.learn = None
+        if hasattr(self, cb.name): delattr(self, cb.name)
+        if cb in self.cbs: self.cbs.remove(cb)
         return self
         
     def one_batch(self, *args, **kwargs):
@@ -74,9 +93,10 @@ class L2RLearner:
         if dl is None: dl = self.dls[idx]
         self.dl = dl
         with torch.no_grad():
-            self('before_validate')
-            self._all_batches(*args, **kwargs)
-            self('after_validate')
+            self._with_events(partial(self._all_batches, *args, **kwargs), 'validate', CancelValidException)
+            # self('before_validate')
+            # self._all_batches(*args, **kwargs)
+            # self('after_validate')
         
     def _all_batches(self, *args, **kwargs):
         self.n_iter = len(self.dl)
@@ -88,19 +108,20 @@ class L2RLearner:
         # self.opt.clear_state()
         return self.opt
     
-    def fit(self, n_epochs, **kwargs):
-        opt = getattr(self, 'opt', None)
-        if opt is None: self.create_opt()
-        self.n_epochs = n_epochs
-        self('before_fit')
-        try:
-            for self.epoch,_ in enumerate(range(self.n_epochs)):
-                self('before_epoch')
-                self.one_epoch(True, **kwargs)
-                self.one_epoch(False, **kwargs)
-                self('after_epoch')
-        except CancelFitException: pass 
-        self('after_fit')
+    def fit(self, n_epochs, cbs=None, **kwargs):
+        with self.added_cbs(cbs):
+            opt = getattr(self, 'opt', None)
+            if opt is None: self.create_opt()
+            self.n_epochs = n_epochs
+            self('before_fit')
+            try:
+                for self.epoch,_ in enumerate(range(self.n_epochs)):
+                    self('before_epoch')
+                    self.one_epoch(True, **kwargs)
+                    self.one_epoch(False, **kwargs)
+                    self('after_epoch')
+            except CancelFitException: pass 
+            self('after_fit')
     
     def validate(self, idx=1, dl=None, **kwargs):
         try: 
@@ -110,8 +131,14 @@ class L2RLearner:
     
     def __call__(self, name):
         for cb in self.cbs: getattr(cb, name, noop)()
+        
+    def _with_events(self, f, event_type, ex, final=noop):
+        try: self(f'before_{event_type}'); f()
+        except ex: self(f'after_cancel_{event_type}')
+        self(f'after_{event_type}'); final()
+        
 
-# %% ../../nbs/09_l2r.learner.ipynb 8
+# %% ../../nbs/09_l2r.learner.ipynb 9
 @patch
 @delegates(save_model)
 def save(self:L2RLearner, file, **kwargs):
@@ -120,7 +147,7 @@ def save(self:L2RLearner, file, **kwargs):
     save_model(file, self.model, getattr(self, 'opt', None), **kwargs)
     return file
 
-# %% ../../nbs/09_l2r.learner.ipynb 9
+# %% ../../nbs/09_l2r.learner.ipynb 10
 @patch
 @delegates(load_model)
 def load(self:L2RLearner, file, device=None, **kwargs):
@@ -132,7 +159,7 @@ def load(self:L2RLearner, file, device=None, **kwargs):
     load_model(file, self.model, self.opt, device=device, **kwargs)
     return self
 
-# %% ../../nbs/09_l2r.learner.ipynb 10
+# %% ../../nbs/09_l2r.learner.ipynb 11
 @patch
 def show_results(self:L2RLearner, device=None, k=None):
     dataset = to_device(self.dls.train.dataset, device=device)
@@ -150,7 +177,7 @@ def show_results(self:L2RLearner, device=None, k=None):
     df_ndcg = pd.DataFrame({'labels': lbs, 'ndcg_at_k':_ndcg_at_k.cpu().numpy()})
     return df_results, df_ndcg
 
-# %% ../../nbs/09_l2r.learner.ipynb 12
+# %% ../../nbs/09_l2r.learner.ipynb 13
 def get_learner(model, dls, grad_fn=rank_loss3, loss_fn=loss_fn2, lr=1e-5, cbs=None, opt_func=partial(SGD, mom=0.9), lambrank=False):
     if lambrank: grad_fn = partial(grad_fn, lambrank=lambrank)
     learner = L2RLearner(model, dls, grad_fn, loss_fn, lr, cbs, opt_func=opt_func)

@@ -15,7 +15,17 @@ from .gradients import *
 
 # %% ../../nbs/09_l2r.learner.ipynb 6
 class L2RLearner:
-    def __init__(self, model, dls, grad_func, loss_func, lr, cbs, opt_func=SGD, path=None):
+    def __init__(self, 
+        model, 
+        dls, 
+        grad_func, 
+        loss_func, 
+        lr, 
+        cbs, 
+        opt_func=SGD, 
+        path=None,
+        moms:tuple=(0.95,0.08,0.95)
+    ):
         store_attr(but='cbs')
         self.path = Path(path) if path is not None else getattr(dls, 'path', Path('.'))
         self.cbs = L()

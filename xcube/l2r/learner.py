@@ -50,6 +50,12 @@ class L2RLearner:
         try: yield
         finally: self.remove_cbs(cbs)
         
+    @contextmanager
+    def removed_cbs(self, cbs):
+        self.remove_cbs(cbs)
+        try: yield self
+        finally: self.add_cbs(cbs)
+        
     def remove_cbs(self, cbs):
         L(cbs).map(self.remove_cb)
         return self
@@ -178,7 +184,7 @@ def show_results(self:L2RLearner, device=None, k=None):
     return df_results, df_ndcg
 
 # %% ../../nbs/09_l2r.learner.ipynb 13
-def get_learner(model, dls, grad_fn=rank_loss3, loss_fn=loss_fn2, lr=1e-5, cbs=None, opt_func=partial(SGD, mom=0.9), lambrank=False):
+def get_learner(model, dls, grad_fn=rank_loss3, loss_fn=loss_fn2, lr=1e-5, cbs=None, opt_func=partial(SGD, mom=0.9), lambrank=False, **kwargs):
     if lambrank: grad_fn = partial(grad_fn, lambrank=lambrank)
-    learner = L2RLearner(model, dls, grad_fn, loss_fn, lr, cbs, opt_func=opt_func)
+    learner = L2RLearner(model, dls, grad_fn, loss_fn, lr, cbs, opt_func=opt_func, **kwargs)
     return learner

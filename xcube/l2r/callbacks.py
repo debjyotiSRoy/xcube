@@ -204,6 +204,7 @@ def plot_sched(self:TrackResults, keys=None, figsize=None):
 @docs
 class XLRFinder(XParamScheduler):
     "Training with exponentially growing learning rate"
+    run_after=TrackResults
     def __init__(self, start_lr=1e-7, end_lr=10, num_it=100, stop_div=True):
         if num_it < 6: num_it = 6
         self.scheds = {'lr': [SchedExp(s, e) for (s,e) in zip(start_lr,end_lr)
@@ -211,6 +212,9 @@ class XLRFinder(XParamScheduler):
         self.num_it,self.stop_div = num_it,stop_div
 
     def before_fit(self):
+        if hasattr(self, 'track_results'):
+            moi = self.track_results.names[self.track_results.ioi]
+            print(f'Smoothing {moi}')
         super().before_fit()
         path = self.path
         path.mkdir(parents=True, exist_ok=True)
@@ -243,9 +247,62 @@ class XLRFinder(XParamScheduler):
              "after_batch": "Record hyper-parameters of this batch and potentially stop training",
              "after_fit": "Save the hyper-parameters in the recorder if there is one and load the original model",
              "before_validate": "Skip the validation part of training",
-             "after_cancel_validate": "pass `CancelValidException`"}
+             "after_cancel_validate": "pass `CancelValidException`",
+             "run_after":""}
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 26
+@patch
+def plot_xlr_find(self:TrackResults, skip_end=5, return_fig=True, suggestions=None, nms=None, **kwargs):
+    "Plot the result of an LR Finder test (won't work if you didn't do `learn.xlr_find()` before)"
+    lrs  = self.lrs  if skip_end==0 else self.lrs[:-skip_end]
+    mois = L(self.mois if skip_end==0 else self.mois[:-skip_end]).map(Tensor.cpu)
+    smooth_mois = L(self.smooth_mois if skip_end==0 else self.smooth_mois[:-skip_end]).map(Tensor.cpu)
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    ax1.plot(lrs, smooth_mois)
+    ax1.set_ylabel("Smoothened MOI")
+    ax1.set_xlabel("Learning Rate")
+    ax1.set_xscale('log')
+    ax2.plot(range(len(mois)), mois, label='MOI')
+    ax2.plot(range(len(smooth_mois)), smooth_mois, label='SMOI')
+    ax2.legend(loc='best')
+    if suggestions:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][1:]
+        for (val, idx), nm, color in zip(suggestions, nms, colors):
+            ax1.plot(val, idx, 'o', label=nm, c=color)
+        ax1.legend(loc='best')
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 27
+@patch
+def xrl_find(self:L2RLearner, start_lr=1e-5, end_lr=1e-1, num_it=400, stop_div=True, show_plot=True, suggest_funcs=(valley,)):
+    "Launch a mock training to find a good learning rate and return suggestions based on `suggest_funcs` as a named tuple"
+    n_epochs = num_it//len(self.dls.train) + 1
+    cb=XLRFinder(start_lr=start_lr, end_lr=end_lr, num_it=num_it, stop_div=stop_div)
+    self.fit(n_epochs, cbs=cb)
+    if suggest_funcs is not None:
+        lrs, smooth_mois = tensor(self.track_results.lrs[num_it//10:-5]),tensor(self.track_results.smooth_mois[num_it//10:-5])
+        nan_idxs = torch.nonzero(torch.isnan(smooth_mois.view(-1)))
+        if len(nan_idxs):
+            drop_idx = min(nan_idxs)
+            lrs = lrs[:drop_idx]
+            smooth_mois = smooth_mois[:drop_idx]
+        _suggestions, nms = [], []
+        for func in tuplify(suggest_funcs):
+            nms.append(func.__name__ if not isinstance(func, partial) else func.func.__name__) # deal with partials
+            _suggestions.append(func(lrs, smooth_mois, num_it))
+            
+        # pdb.set_trace()
+        SuggestedLRs = collections.namedtuple('SuggestedLRs', nms)
+        lrs, pnts = [], []
+        for lr, pnt in _suggestions:
+            lrs.append(lr)
+            pnts.append(pnt)   
+        if show_plot: self.track_results.plot_xlr_find(suggestions=pnts, nms=nms)
+        return SuggestedLRs(*lrs)
+    
+    elif show_plot: self.track_results.plot_xlr_find()
+        
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 29
 class ProgressBarCallback(Callback):
     order = 70
     
@@ -277,7 +334,7 @@ class ProgressBarCallback(Callback):
             self.mbar.on_iter_end()
             delattr(self, 'mbar')
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 29
+# %% ../../nbs/11_l2r.callbacks.ipynb 31
 class SaveCallBack(Monitor):
     order = Monitor.order+1
     def __init__(self, 

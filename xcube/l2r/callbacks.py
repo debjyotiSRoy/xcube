@@ -24,6 +24,7 @@ class TrainEval(Callback):
         
     def after_batch(self):
         "Update the iter counter (in training mode)"
+        if not self.model.training: return
         self.learn.pct_train += 1./(self.n_iter*self.n_epochs)
         self.learn.train_iter += 1
         
@@ -178,6 +179,7 @@ from fastai.callback.schedule import *
 @patch
 def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5, pct_start=0.25, moms=None, cbs=None):
     "Fit `self.model` for `n_epoch` using the 1cycle policy."
+    self.lr_max = lr_max
     self.opt = getattr(self, 'opt', None)
     if self.opt is None: self.create_opt()
     self.opt.set_hyper('lr', self.lr if lr_max is None else lr_max)
@@ -227,8 +229,8 @@ class XLRFinder(XParamScheduler):
 
     def after_batch(self):
         super().after_batch()
-        if self.smooth_moi < self.best_moi: self.best_moi = self.smooth_moi
-        if self.smooth_moi < 4*self.best_moi and self.stop_div: raise CancelFitException()
+        if self.smooth_moi > self.best_moi: self.best_moi = self.smooth_moi
+        if 4*self.smooth_moi < self.best_moi and self.stop_div: raise CancelFitException()
         if self.train_iter >= self.num_it: raise CancelFitException()
 
     def before_validate(self): raise CancelValidException()
@@ -262,14 +264,15 @@ def plot_xlr_find(self:TrackResults, skip_end=5, return_fig=True, suggestions=No
     ax1.set_ylabel("Smoothened MOI")
     ax1.set_xlabel("Learning Rate")
     ax1.set_xscale('log')
-    ax2.plot(range(len(mois)), mois, label='MOI')
-    ax2.plot(range(len(smooth_mois)), smooth_mois, label='SMOI')
-    ax2.legend(loc='best')
     if suggestions:
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][1:]
         for (val, idx), nm, color in zip(suggestions, nms, colors):
             ax1.plot(val, idx, 'o', label=nm, c=color)
         ax1.legend(loc='best')
+    ax2.plot(range(len(mois)), mois, label='MOI')
+    ax2.plot(range(len(smooth_mois)), smooth_mois, label='SMOI')
+    ax2.legend(loc='best')
+
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 27
 @patch

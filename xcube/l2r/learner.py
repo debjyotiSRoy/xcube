@@ -168,12 +168,16 @@ def load(self:L2RLearner, file, device=None, **kwargs):
 # %% ../../nbs/09_l2r.learner.ipynb 11
 @patch
 def show_results(self:L2RLearner, device=None, k=None):
+    "Produces the ranking for 100 random labels"
     dataset = to_device(self.dls.train.dataset, device=device)
-    xb = dataset[34:78]
+    num_lbs = dataset.shape[0]
+    idxs = torch.randperm(num_lbs)[:100]
+    xb = dataset[idxs]
     xb = xb.unsqueeze(0)
     preds, preds_rank, *_,  _ndcg_at_k = ndcg(self.model(xb), xb, k=k)
     if _ndcg_at_k is not None: _ndcg_at_k.squeeze_(0) 
-    lbs = xb[:, :, :, 1].unique().cpu().numpy()
+    # lbs = xb[:, :, :, 1].unique().cpu().numpy()
+    lbs = idxs.numpy()
     cols = pd.MultiIndex.from_product([lbs, ('tok', 'lbl', 'rank', 'score', 'preds', 'model_rank')], names=['label', 'key2'])
     data = torch.concat( (xb, preds.unsqueeze(-1), preds_rank.unsqueeze(-1)), dim=-1).squeeze(0).permute(1, 0, 2).contiguous()
     data = data.reshape(data.shape[0], -1)

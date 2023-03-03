@@ -43,7 +43,7 @@ class L2R_DotProductBias(nn.Module):
 
 # %% ../../../nbs/07_l2r.models.core.ipynb 8
 class L2R_NN(nn.Module):
-    def __init__(self, num_lbs, num_toks, num_factors, n_act = 200, y_range=None):
+    def __init__(self, num_lbs, num_toks, num_factors, n_act = 200, dp=0.0, y_range=None):
         super().__init__()
         self.num_toks, self.num_lbs = num_toks+1, num_lbs+1 # +1 for the `padding_idx` 
         self.num_factors, self.n_act = num_factors, n_act
@@ -51,9 +51,10 @@ class L2R_NN(nn.Module):
         self.label_factors = nn.Embedding(self.num_lbs, num_factors, padding_idx=-1)
         self.y_range = y_range
         self.layers = nn.Sequential(
-            nn.Linear(num_factors*2, n_act),
+            nn.Linear(num_factors, n_act),
             nn.ReLU(),
-            nn.Linear(n_act, 1)
+            nn.Linear(n_act, 1),
+            nn.Dropout(dp),
         )
         
     def forward(self, xb):
@@ -69,7 +70,8 @@ class L2R_NN(nn.Module):
         lbs_embs = lbs_embs.unsqueeze(2) # shape (64, 2233, 1, 200)
         lbs_embs = lbs_embs.expand(-1, -1, xb.shape[2], -1)
         
-        embs = torch.cat((toks_embs, lbs_embs), dim=-1) # shape (64, 2233, 64, 400)
+        # embs = torch.cat((toks_embs, lbs_embs), dim=-1) # shape (64, 2233, 64, 400)
+        embs = toks_embs + lbs_embs
         res = self.layers(embs)
         
         return sigmoid_range(res, *self.y_range) if self.y_range is not None else res

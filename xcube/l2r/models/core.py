@@ -46,7 +46,7 @@ class L2R_NN(nn.Module):
     def __init__(self, num_lbs, num_toks, num_factors, n_act = 200, dp=0.0, y_range=None):
         super().__init__()
         self.num_toks, self.num_lbs = num_toks+1, num_lbs+1 # +1 for the `padding_idx` 
-        self.num_factors, self.n_act = num_factors, n_act
+        self.num_factors, self.n_act, self.dp = num_factors, n_act, dp
         self.token_factors = nn.Embedding(self.num_toks, num_factors, padding_idx=-1)
         self.label_factors = nn.Embedding(self.num_lbs, num_factors, padding_idx=-1)
         self.y_range = y_range
@@ -54,9 +54,13 @@ class L2R_NN(nn.Module):
             nn.Linear(num_factors, n_act),
             nn.ReLU(),
             nn.Linear(n_act, 1),
-            nn.Dropout(dp),
+            nn.Dropout(self.dp),
         )
         
+    def __str__(self): return super().__repr__() + f"\n {self.n_act = }, {self.dp = }"
+    __repr__ = __str__
+
+    
     def forward(self, xb):
         # import pdb; pdb.set_trace()
         xb_toks = xb[:, :, :, 0].long() # xb[...,0] # shape (64, 2233, 64)

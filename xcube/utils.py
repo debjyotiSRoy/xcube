@@ -20,6 +20,8 @@ def list_files(startpath):
     """ [simulates the linux tree cmd] 
     (https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python)
     """ 
+    
+    if isinstance(startpath, Path): startpath = str(startpath) 
     for root, dirs, files in os.walk(startpath):
         level = root.replace(startpath, '').count(os.sep)
         indent = ' ' * 4 * (level)

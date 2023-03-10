@@ -379,4 +379,5 @@ d = { 'settings': { 'branch': 'main',
                              'xcube.utils.namestr': ('utils.html#namestr', 'xcube/utils.py'),
                              'xcube.utils.plot_hist': ('utils.html#plot_hist', 'xcube/utils.py'),
                              'xcube.utils.plot_reduction': ('utils.html#plot_reduction', 'xcube/utils.py'),
-                             'xcube.utils.test_eqs': ('utils.html#test_eqs', 'xcube/utils.py')}}}
+                             'xcube.utils.test_eqs': ('utils.html#test_eqs', 'xcube/utils.py'),
+                             'xcube.utils.validate': ('utils.html#validate', 'xcube/utils.py')}}}

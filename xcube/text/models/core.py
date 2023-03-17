@@ -101,27 +101,27 @@ class OurPoolingLinearClassifier(Module):
         return x, out, out
 
 # %% ../../../nbs/02_text.models.core.ipynb 18
-from ...layers import _create_params
+from ...layers import _create_bias
 
-# %% ../../../nbs/02_text.models.core.ipynb 19
+# %% ../../../nbs/02_text.models.core.ipynb 20
 class LabelAttentionClassifier(Module):
     initrange=0.1
     def __init__(self, n_hidden, n_lbs, y_range=None):
         store_attr('n_hidden,n_lbs,y_range')
         self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden)
-        self.elem_lin = ElemWiseLin(self.n_lbs, self.n_hidden)
-        self.label_bias = _create_params((self.n_lbs,))
+        self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
+        self.label_bias = _create_bias((self.n_lbs,), with_zeros=False)
     
-    def forward(self, inp):
-        if isinstance(inp, tuple): inp, _ = inp # input is the stuff coming outta SentenceEncoder i.e., shape (bs, max_len, nh) in other words the concatenated output of the AWD_LSTM
-        ctx = self.pay_attn(inp) #shape (bs, n_lbs, n_hidden)
-        ctx = self.elem_lin(ctx) # shape (bs, n_lbs, n_hidden)
-        x = ctx.sum(dim=2) + self.label_bias # shape (bs, n_lbs)
+    def forward(self, sent):
+        if isinstance(sent, tuple): sent, mask = sent # sent is the stuff coming outta SentenceEncoder i.e., shape (bs, max_len, nh) in other words the concatenated output of the AWD_LSTM
+        attn = self.pay_attn(sent) #shape (bs, n_lbs, n_hidden)
+        attn = self.boost_attn(attn) # shape (bs, n_lbs, n_hidden)
+        x = attn.sum(dim=2) + self.label_bias # shape (bs, n_lbs)
         
         if self.y_range is not None: x = sigmoid_range(x, *self.y_range)
-        return x, inp, inp
+        return x, sent, sent
 
-# %% ../../../nbs/02_text.models.core.ipynb 21
+# %% ../../../nbs/02_text.models.core.ipynb 23
 def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
@@ -136,7 +136,7 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     model = SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)
 
-# %% ../../../nbs/02_text.models.core.ipynb 22
+# %% ../../../nbs/02_text.models.core.ipynb 24
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]

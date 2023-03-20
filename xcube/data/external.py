@@ -29,7 +29,7 @@ class XURLs():
     S3 = 'https://xcubebucket.s3.us-east-2.amazonaws.com/'
     
     #main datasets
-    MIMIC3 = f'{S3}mimic3/'
+    MIMIC3 = f'{S3}mimic3/mimic3.tgz'
     MIMIC3_L2R = f'{MIMIC3}mimic3_l2r/mimic3_l2r.tgz'
     
     def path(

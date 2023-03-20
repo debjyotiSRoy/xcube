@@ -118,7 +118,7 @@ class LabelAttentionClassifier(Module):
         x = attn.sum(dim=2) + self.label_bias # shape (bs, n_lbs)
         
         if self.y_range is not None: x = sigmoid_range(x, *self.y_range)
-        return x, sent, sent
+        return x, sentc, sentc
 
 # %% ../../../nbs/02_text.models.core.ipynb 23
 def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):

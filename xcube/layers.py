@@ -88,7 +88,7 @@ def lincomb(t, wgts=None):
     return torch.bmm(wgts, t) # wgts@t
 
 # %% ../nbs/01_layers.ipynb 34
-# @torch.no_grad()
+@torch.no_grad()
 def topkmax(x, k=None, dim=1):
     """
     returns softmax of the 1th dim of 3d tensor x after zeroing out values in x smaller than `k`th largest.
@@ -109,7 +109,7 @@ class XMLAttention(Module):
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
         self.LinAttn = Lambda(Linear_Attention(self.lbs))
 
-    def forward(self, sentc):
+    def forward(self, sentc, mask):
         # sent is the ouput of SentenceEncoder i.e., (bs, max_len tokens, nh)
-        attn_wgts = F.softmax(self.LinAttn(sentc), dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
-        return lincomb(sentc, wgts=attn_wgts.transpose(1,2)) # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
+        attn_wgts = F.softmax(self.LinAttn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+        return lincomb(sentc, wgts=attn_wgts.transpose(1,2)), attn_wgts # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

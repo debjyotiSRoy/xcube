@@ -52,34 +52,45 @@ class SentenceEncoder(Module):
 class AttentiveSentenceEncoder(Module):
     "Create an encoder over `module` that can process a full sentence."
     def __init__(self, bptt, module, decoder, pad_idx=1, max_len=None): 
-        store_attr('bptt,module,pad_idx,max_len')
-        self.decoder = decoder
-    def reset(self): getattr(self.module, 'reset', noop)()
+        store_attr('bptt,module,decoder,pad_idx,max_len')
+        self.n_lbs = getattr(self.decoder, 'n_lbs', None)
+        # if n_lbs is None: raise Exception("could not infer `n_lbs` from `decoder`")
+        # self.hl = torch.zeros(1)
+    def reset(self): 
+        getattr(self.module, 'reset', noop)()
+        # getattr(self.decoder, 'reset', noop)()
 
     def forward(self, input):
         bs,sl = input.size()
         self.reset()
+        self.decoder.hl = input.new_zeros((bs, self.n_lbs))
+        # print(f"Starting to read a btch of docs start hl.sum() = {self.decoder.hl.sum()}", end='\n')
         mask = input == self.pad_idx
         outs,masks = [],[]
-        lbs_preds = 0.
         for i in range(0, sl, self.bptt):
             #Note: this expects that sequence really begins on a round multiple of bptt
             # import pdb; pdb.set_trace()
             real_bs = (input[:,i] != self.pad_idx).long().sum()
             o = self.module(input[:real_bs,i: min(i+self.bptt, sl)]) # shape (bs, bptt, nh)
-            mask_slice = mask[:real_bs, i: min(i+self.bptt, sl)] 
-            d, *_ = self.decoder((o, mask_slice))
-            lbs_preds += _pad_tensor(d, bs)
-            # if self.max_len is None or sl-i <= self.max_len:
-                # outs.append(o)
-                # masks.append(mask[:,i: min(i+self.bptt, sl)])
+            if self.max_len is None or sl-i <= self.max_len:
+                outs.append(o)
+                masks.append(mask[:,i: min(i+self.bptt, sl)])
+                # print(f"\t\t (Within max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
+            else:
+                mask_slice = mask[:real_bs, i: min(i+self.bptt, sl)] 
+                # mask_slice = mask[:, i: min(i+self.bptt, sl)] 
+                # hl, *_ = self.decoder((_pad_tensor(o, bs), mask_slice))
+                hl, *_ = self.decoder((o, mask_slice))
+                # hl = _pad_tensor(hl, bs)
+                self.decoder.hl = hl.detach()
+                # print(f"\t (Outside max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
+                
         # import pdb; pdb.set_trace()
-        # outs = torch.cat([_pad_tensor(o, bs) for o in outs], dim=1)
-        # mask = torch.cat(masks, dim=1)
-        # return outs,mask
-        return lbs_preds, None, None
+        outs = torch.cat([_pad_tensor(o, bs) for o in outs], dim=1)
+        mask = torch.cat(masks, dim=1)
+        return outs,mask
 
-# %% ../../../nbs/02_text.models.core.ipynb 15
+# %% ../../../nbs/02_text.models.core.ipynb 16
 def masked_concat_pool(output, mask, bptt):
     "Pool `MultiBatchEncoder` outputs into one vector [last_hidden, max_pool, avg_pool]"
     lens = output.shape[1] - mask.long().sum(dim=1)
@@ -90,7 +101,7 @@ def masked_concat_pool(output, mask, bptt):
     x = torch.cat([output[torch.arange(0, output.size(0)),-last_lens-1], max_pool, avg_pool], 1) #Concat pooling.
     return x
 
-# %% ../../../nbs/02_text.models.core.ipynb 16
+# %% ../../../nbs/02_text.models.core.ipynb 17
 class XMLPoolingLinearClassifier(Module):
     def __init__(self, dims, ps, bptt, y_range=None):
         self.layer = LinBnDrop(dims[0], dims[1], p=ps, act=None)
@@ -102,10 +113,10 @@ class XMLPoolingLinearClassifier(Module):
         x = self.layer(x)
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 19
+# %% ../../../nbs/02_text.models.core.ipynb 20
 from ...layers import _create_bias
 
-# %% ../../../nbs/02_text.models.core.ipynb 20
+# %% ../../../nbs/02_text.models.core.ipynb 21
 class LabelAttentionClassifier(Module):
     initrange=0.1
     def __init__(self, n_hidden, n_lbs, y_range=None):
@@ -113,18 +124,23 @@ class LabelAttentionClassifier(Module):
         self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden)
         self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
         self.label_bias = _create_bias((self.n_lbs,), with_zeros=False)
+        self.hl = torch.zeros(1) #self.label_bias.data.new_zeros(1)
     
     def forward(self, sentc):
         if isinstance(sentc, tuple): sentc, mask = sentc # sentc is the stuff coming outta SentenceEncoder i.e., shape (bs, max_len, nh) in other words the concatenated output of the AWD_LSTM
         sentc = sentc.masked_fill(mask[:, :, None], 0)
         attn, *wgts = self.pay_attn(sentc, mask) #shape (bs, n_lbs, n_hidden)
         attn = self.boost_attn(attn) # shape (bs, n_lbs, n_hidden)
-        x = attn.sum(dim=2) + self.label_bias # shape (bs, n_lbs)
+        # self.hl = self.hl.to(self.label_bias.device)
+        bs = self.hl.size(0)
+        x = self.hl + _pad_tensor(attn.sum(dim=2), bs) + self.label_bias # shape (bs, n_lbs)
         
         if self.y_range is not None: x = sigmoid_range(x, *self.y_range)
         return x, sentc, sentc
+    
+    # def reset(self): self.hl.zero_()
 
-# %% ../../../nbs/02_text.models.core.ipynb 23
+# %% ../../../nbs/02_text.models.core.ipynb 24
 def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
@@ -139,7 +155,7 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     model = SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)
 
-# %% ../../../nbs/02_text.models.core.ipynb 24
+# %% ../../../nbs/02_text.models.core.ipynb 25
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
@@ -151,5 +167,5 @@ def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, dr
     init = config.pop('init') if 'init' in config else None
     decoder = LabelAttentionClassifier(n_hidden, n_class, y_range=y_range)
     encoder = AttentiveSentenceEncoder(seq_len, arch(vocab_sz, **config), decoder, pad_idx=pad_idx, max_len=max_len)
-    model =  encoder # SequentialRNN(encoder, decoder)
+    model =  SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)

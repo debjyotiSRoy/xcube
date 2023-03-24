@@ -18,7 +18,7 @@ def _create_bias(size, with_zeros=False):
     if with_zeros: return nn.Parameter(torch.zeros(*size))
     return nn.Parameter(torch.zeros(*size).uniform_(-0.1, 0.1))
 
-# %% ../nbs/01_layers.ipynb 14
+# %% ../nbs/01_layers.ipynb 16
 class ElemWiseLin(Module):
     initrange=0.1
     def __init__(self, dim0, dim1, add_bias=False, **kwargs):
@@ -32,7 +32,7 @@ class ElemWiseLin(Module):
         res = torch.addcmul(self.bias if self.add_bias else x.new_zeros(1), x, self.lin.weight)# * self.lin.weight
         return res #+ self.bias if self.add_bias else res
 
-# %% ../nbs/01_layers.ipynb 17
+# %% ../nbs/01_layers.ipynb 19
 class LinBnFlatDrop(nn.Sequential):
     "Module grouping `BatchNorm1dFlat`, `Dropout` and `Linear` layers"
     def __init__(self, n_in, n_out, bn=True, p=0., act=None, lin_first=False):
@@ -43,7 +43,7 @@ class LinBnFlatDrop(nn.Sequential):
         layers = lin+layers if lin_first else layers+lin
         super().__init__(*layers)
 
-# %% ../nbs/01_layers.ipynb 18
+# %% ../nbs/01_layers.ipynb 20
 class LinBnDrop(nn.Sequential):
     "Module grouping `BatchNorm1d`, `Dropout` and `Linear` layers"
     def __init__(self, n_in, n_out=None, bn=True, ln=True, p=0., act=None, lin_first=False, ndim=1):
@@ -55,39 +55,39 @@ class LinBnDrop(nn.Sequential):
         layers = lin+layers if lin_first else layers+lin
         super().__init__(*layers)
 
-# %% ../nbs/01_layers.ipynb 24
+# %% ../nbs/01_layers.ipynb 26
 class Embedding(nn.Embedding):
     "Embedding layer with truncated normal initialization"
     def __init__(self, ni, nf, std=0.01, **kwargs):
         super().__init__(ni, nf, **kwargs)
         trunc_normal_(self.weight.data, std=std)
 
-# %% ../nbs/01_layers.ipynb 26
+# %% ../nbs/01_layers.ipynb 28
 def _linear_attention(sentc:Tensor, # Sentence typically `(bs, bptt, nh)`
                    based_on: Embedding|Module # xcube's `Embedding(n_lbs, nh)` layer holding the label embeddings or a full fledged model
                   ):
     return sentc @ based_on.weight.transpose(0,1)
 
-# %% ../nbs/01_layers.ipynb 28
+# %% ../nbs/01_layers.ipynb 30
 class _Pay_Attention:
     def __init__(self, f, based_on): store_attr('f,based_on')
     def __call__(self, sentc): return self.f(sentc, self.based_on)
 
-# %% ../nbs/01_layers.ipynb 29
+# %% ../nbs/01_layers.ipynb 31
 def Linear_Attention(based_on: Module): return _Pay_Attention(_linear_attention, based_on)
 
-# %% ../nbs/01_layers.ipynb 30
+# %% ../nbs/01_layers.ipynb 32
 def Ranked_Attention(based_on: Module):
     # TODO: Deb Create an architecture same as the Learning2Rank Model here, so that we can preload it just like fastai preloads LM encoder during text classification.
     pass
 
-# %% ../nbs/01_layers.ipynb 32
+# %% ../nbs/01_layers.ipynb 34
 def lincomb(t, wgts=None):
     "returns the linear combination of the dim1 of a 3d tensor of `t` based on `wgts` (if `wgts` is `None` just adds the rows)"
     if wgts is None: wgts = t.new_ones(t.size(0), 1, t.size(1))
     return torch.bmm(wgts, t) # wgts@t
 
-# %% ../nbs/01_layers.ipynb 34
+# %% ../nbs/01_layers.ipynb 36
 @torch.no_grad()
 def topkmax(x, k=None, dim=1):
     """
@@ -100,7 +100,7 @@ def topkmax(x, k=None, dim=1):
     x[x < kth_largest] = 0.
     return x.softmax(dim=1)
 
-# %% ../nbs/01_layers.ipynb 37
+# %% ../nbs/01_layers.ipynb 39
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):

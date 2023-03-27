@@ -21,4 +21,6 @@ website:
       - 15_l2r.data.stat.ipynb
       - 17_tutorial.train_l2r.ipynb
       - 18_tutorial.train_mimic3.ipynb
+      - arch_res_text_models(arxived).ipynb
+      - scratch.ipynb
       - tutorial.ipynb

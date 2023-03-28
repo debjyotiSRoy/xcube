@@ -64,7 +64,7 @@ class Embedding(nn.Embedding):
 
 # %% ../nbs/01_layers.ipynb 28
 def _linear_attention(sentc:Tensor, # Sentence typically `(bs, bptt, nh)`
-                   based_on: Embedding|Module # xcube's `Embedding(n_lbs, nh)` layer holding the label embeddings or a full fledged model
+                   based_on: nn.Embedding|Module # xcube's `Embedding(n_lbs, nh)` layer holding the label embeddings or a full fledged model
                   ):
     return sentc @ based_on.weight.transpose(0,1)
 

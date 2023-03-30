@@ -80,7 +80,7 @@ class AttentiveSentenceEncoder(Module):
                 # hl, *_ = self.decoder((_pad_tensor(o, bs), mask_slice))
                 hl, *_ = self.decoder((o, mask_slice))
                 # hl = _pad_tensor(hl, bs)
-                self.decoder.hl = hl.detach()
+                self.decoder.hl = hl.sigmoid().detach()
                 # print(f"\t (Outside max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
                 
         # import pdb; pdb.set_trace()
@@ -130,6 +130,7 @@ class LabelAttentionClassifier(Module):
         attn, wgts = self.pay_attn(sentc, mask) #shape (bs, n_lbs, n_hidden)
         attn = self.boost_attn(attn) # shape (bs, n_lbs, n_hidden)
         bs = self.hl.size(0)
+        self.hl = self.hl.to(sentc.device)
         pred = self.hl + _pad_tensor(attn.sum(dim=2), bs) + self.label_bias # shape (bs, n_lbs)
         
         if self.y_range is not None: pred = sigmoid_range(pred, *self.y_range)

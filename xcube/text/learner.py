@@ -69,7 +69,7 @@ def brainsplant(xml_vocab, brain_vocab, brain, device=None):
     xml_brain[toks_map.itemgot(0)] = brain[toks_map.itemgot(1)][:, lbs_map.itemgot(1)][:, lbs_map.itemgot(0)] # permute toks dim to match xml and brain
     return xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
 
-# %% ../../nbs/03_text.learner.ipynb 32
+# %% ../../nbs/03_text.learner.ipynb 31
 def load_collab_keys(
     model, # Model architecture
     wgts:dict # Model weights
@@ -84,7 +84,7 @@ def load_collab_keys(
         sd['1.attn.lbs_weight_dp.emb.weight'] = i_weight.data.clone()
     return model.load_state_dict(sd)
 
-# %% ../../nbs/03_text.learner.ipynb 36
+# %% ../../nbs/03_text.learner.ipynb 35
 @delegates(Learner.__init__)
 class TextLearner(Learner):
     "Basic class for a `Learner` in NLP."
@@ -151,18 +151,6 @@ class TextLearner(Learner):
         vocab = L(_get_text_vocab(self.dls), _get_label_vocab(self.dls)).map(listify)
         xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain = brainsplant(vocab, brain_vocab, brain)
         # import pdb; pdb.set_trace()
-        print("do some tests")
-        assert all_equal(array(vocab[0])[toks_map.itemgot(0)], array(brain_vocab[0])[toks_map.itemgot(1)])
-        assert all_equal(array(vocab[1])[lbs_map.itemgot(0)], array(brain_vocab[1])[lbs_map.itemgot(1)])
-        rnd_code = random.choice(vocab[1])
-        lbl_idx_from_brn = brain_vocab[1].index(rnd_code)
-        top_toks_from_brn = brain[:, lbl_idx_from_brn].topk(k=20).indices.cpu()
-        array(brain_vocab[0])[top_toks_from_brn]
-        lbl_idx_from_xml = vocab[1].index(rnd_code)
-        top_toks_from_xml = xml_brain[:, lbl_idx_from_xml].topk(k=20).indices.cpu()
-        test_eq(lbs_xml2brain[lbl_idx_from_xml], lbl_idx_from_brn)
-        test_eq(array(brain_vocab[0])[top_toks_from_brn], array(vocab[0])[top_toks_from_xml])
-        # lbs_des['642.41'], array(xml_vocab[0])[top_toks_from_xml]
         return self
 
     def load_pretrained(self, 
@@ -211,10 +199,10 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 39
+# %% ../../nbs/03_text.learner.ipynb 38
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 40
+# %% ../../nbs/03_text.learner.ipynb 39
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, **kwargs):

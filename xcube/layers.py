@@ -12,7 +12,7 @@ from fastai.text.models.awdlstm import EmbeddingDropout, RNNDropout
 from .utils import *
 
 # %% auto 0
-__all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Ranked_Attention', 'Lookup_Attention',
+__all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Lookup_Attention', 'Ranked_Attention',
            'lincomb', 'topkmax', 'XMLAttention']
 
 # %% ../nbs/01_layers.ipynb 13
@@ -78,13 +78,13 @@ class _Pay_Attention:
 # %% ../nbs/01_layers.ipynb 31
 def Linear_Attention(based_on: Module): return _Pay_Attention(_linear_attention, based_on)
 
-# %% ../nbs/01_layers.ipynb 32
+# %% ../nbs/01_layers.ipynb 33
+def Lookup_Attention(brain: Tensor): return _Pay_Attention(_lookup_attention, brain)
+
+# %% ../nbs/01_layers.ipynb 35
 def Ranked_Attention(based_on: Module):
     # TODO: Deb Create an architecture same as the Learning2Rank Model here, so that we can preload it just like fastai preloads LM encoder during text classification.
     pass
-
-# %% ../nbs/01_layers.ipynb 34
-def Lookup_Attention(brain: Tensor): return _Pay_Attention(_lookup_attention, brain)
 
 # %% ../nbs/01_layers.ipynb 36
 def lincomb(t, wgts=None):

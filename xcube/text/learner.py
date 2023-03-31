@@ -69,7 +69,7 @@ def brainsplant(xml_vocab, brain_vocab, brain, device=None):
     xml_brain[toks_map.itemgot(0)] = brain[toks_map.itemgot(1)][:, lbs_map.itemgot(1)][:, lbs_map.itemgot(0)] # permute toks dim to match xml and brain
     return xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
 
-# %% ../../nbs/03_text.learner.ipynb 31
+# %% ../../nbs/03_text.learner.ipynb 35
 def load_collab_keys(
     model, # Model architecture
     wgts:dict # Model weights
@@ -84,7 +84,7 @@ def load_collab_keys(
         sd['1.attn.lbs_weight_dp.emb.weight'] = i_weight.data.clone()
     return model.load_state_dict(sd)
 
-# %% ../../nbs/03_text.learner.ipynb 35
+# %% ../../nbs/03_text.learner.ipynb 39
 @delegates(Learner.__init__)
 class TextLearner(Learner):
     "Basic class for a `Learner` in NLP."
@@ -149,7 +149,7 @@ class TextLearner(Learner):
         *brain_vocab, brain = mapt(brain_bootstrap.get, ['toks', 'lbs', 'mutual_info_jaccard'])
         brain_vocab = L(brain_vocab).map(listify)
         vocab = L(_get_text_vocab(self.dls), _get_label_vocab(self.dls)).map(listify)
-        xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain = brainsplant(vocab, brain_vocab, brain)
+        self.brain, *_ = brainsplant(vocab, brain_vocab, brain)
         # import pdb; pdb.set_trace()
         return self
 
@@ -199,10 +199,10 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 38
+# %% ../../nbs/03_text.learner.ipynb 42
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 39
+# %% ../../nbs/03_text.learner.ipynb 43
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, **kwargs):

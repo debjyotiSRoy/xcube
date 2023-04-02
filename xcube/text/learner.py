@@ -9,6 +9,7 @@ from fastai.text.learner import *
 from fastai.callback.rnn import *
 from fastai.text.models.awdlstm import *
 from fastai.text.models.core import get_text_classifier
+from fastprogress.fastprogress import master_bar, progress_bar
 from .models.core import *
 
 # %% ../../nbs/03_text.learner.ipynb 7
@@ -51,16 +52,23 @@ def match_collab(
     return old_wgts, missing
 
 # %% ../../nbs/03_text.learner.ipynb 23
-def _xml2brain(xml_vocab, brain_vocab):
+def _xml2brain(xml_vocab, brain_vocab, parent_bar=None):
     "Creates a mapping between the indices of the xml vocab and the brainrmation-gain vocab"
-    xml2brain = {i: brain_vocab.index(o) if o in brain_vocab else np.inf  for i,o in enumerate(xml_vocab)}
+    pbar = progress_bar(xml_vocab, parent=parent_bar, leave=True)
+    xml2brain = {i: brain_vocab.index(o) if o in brain_vocab else np.inf  for i,o in enumerate(pbar)}
     xml2brain_notfnd = [o for o in xml2brain if xml2brain[o] is np.inf]
     return xml2brain, xml2brain_notfnd
 
-# %% ../../nbs/03_text.learner.ipynb 26
+# %% ../../nbs/03_text.learner.ipynb 28
 def brainsplant(xml_vocab, brain_vocab, brain, device=None):
-    toks_xml2brain, toks_notfnd = _xml2brain(xml_vocab[0], brain_vocab[0])
-    lbs_xml2brain, lbs_notfnd = _xml2brain(xml_vocab[1], brain_vocab[1])
+    toks_lbs = 'toks lbs'.split()
+    # for i in master_bar(range(2)):
+    # toks_xml2brain, toks_notfnd = _xml2brain(xml_vocab[0], brain_vocab[0])
+    # lbs_xml2brain, lbs_notfnd = _xml2brain(xml_vocab[1], brain_vocab[1])
+    mb = master_bar(range(2))
+    for i in mb:
+        globals().update(dict(zip((toks_lbs[i]+'_xml2brain', toks_lbs[i]+'_notfnd'), (_xml2brain(xml_vocab[i], brain_vocab[i], parent_bar=mb)))))
+        mb.write = f"Finished Loop {i}"
     xml_brain = torch.zeros(*xml_vocab.map(len)).to(default_device() if device is None else device) # initialize empty brain
     toks_map = L((xml_idx, brn_idx) for xml_idx, brn_idx in toks_xml2brain.items() if brn_idx is not np.inf) 
     lbs_map = L((xml_idx, brn_idx) for xml_idx, brn_idx in lbs_xml2brain.items() if brn_idx is not np.inf) 
@@ -69,7 +77,7 @@ def brainsplant(xml_vocab, brain_vocab, brain, device=None):
     xml_brain[toks_map.itemgot(0)] = brain[toks_map.itemgot(1)][:, lbs_map.itemgot(1)][:, lbs_map.itemgot(0)] # permute toks dim to match xml and brain
     return xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
 
-# %% ../../nbs/03_text.learner.ipynb 35
+# %% ../../nbs/03_text.learner.ipynb 37
 def load_collab_keys(
     model, # Model architecture
     wgts:dict # Model weights
@@ -84,7 +92,7 @@ def load_collab_keys(
         sd['1.attn.lbs_weight_dp.emb.weight'] = i_weight.data.clone()
     return model.load_state_dict(sd)
 
-# %% ../../nbs/03_text.learner.ipynb 39
+# %% ../../nbs/03_text.learner.ipynb 41
 @delegates(Learner.__init__)
 class TextLearner(Learner):
     "Basic class for a `Learner` in NLP."
@@ -149,6 +157,7 @@ class TextLearner(Learner):
         *brain_vocab, brain = mapt(brain_bootstrap.get, ['toks', 'lbs', 'mutual_info_jaccard'])
         brain_vocab = L(brain_vocab).map(listify)
         vocab = L(_get_text_vocab(self.dls), _get_label_vocab(self.dls)).map(listify)
+        print("Performing brainsplant...")
         self.brain, *_ = brainsplant(vocab, brain_vocab, brain)
         # import pdb; pdb.set_trace()
         return self
@@ -199,10 +208,10 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 42
+# %% ../../nbs/03_text.learner.ipynb 44
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 43
+# %% ../../nbs/03_text.learner.ipynb 45
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, **kwargs):

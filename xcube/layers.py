@@ -106,6 +106,9 @@ def topkmax(x, k=None, dim=1):
     return x.softmax(dim=1)
 
 # %% ../nbs/01_layers.ipynb 41
+from .utils import *
+
+# %% ../nbs/01_layers.ipynb 42
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):
@@ -114,7 +117,8 @@ class XMLAttention(Module):
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
         self.LinAttn = Lambda(Linear_Attention(self.lbs))
 
-    def forward(self, sentc, mask):
+    def forward(self, inp, sentc, mask):
         # sent is the ouput of SentenceEncoder i.e., (bs, max_len tokens, nh)
+        test_eqs(inp.shape, sentc.shape[:-1], mask.shape)
         attn_wgts = F.softmax(self.LinAttn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
         return lincomb(sentc, wgts=attn_wgts.transpose(1,2)), attn_wgts # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

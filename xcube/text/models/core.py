@@ -67,26 +67,26 @@ class AttentiveSentenceEncoder(Module):
         outs,masks = [],[]
         for i in range(0, sl, self.bptt):
             #Note: this expects that sequence really begins on a round multiple of bptt
-            # import pdb; pdb.set_trace()
             real_bs = (input[:,i] != self.pad_idx).long().sum()
-            o = self.module(input[:real_bs,i: min(i+self.bptt, sl)]) # shape (bs, bptt, nh)
+            chunk = slice(i, min(i+self.bptt, sl))
+            o = self.module(input[:real_bs, chunk]) # shape (bs, bptt, nh)
             if self.max_len is None or sl-i <= self.max_len:
                 outs.append(o)
-                masks.append(mask[:,i: min(i+self.bptt, sl)])
+                masks.append(mask[:, chunk])
                 # print(f"\t\t (Within max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
             else:
-                mask_slice = mask[:real_bs, i: min(i+self.bptt, sl)] 
-                # mask_slice = mask[:, i: min(i+self.bptt, sl)] 
-                # hl, *_ = self.decoder((_pad_tensor(o, bs), mask_slice))
-                hl, *_ = self.decoder((o, mask_slice))
-                # hl = _pad_tensor(hl, bs)
+                mask_slice = mask[:real_bs, chunk] 
+                inp = input[:real_bs, chunk]
+                # import pdb; pdb.set_trace()
+                hl, *_ = self.decoder((inp, o, mask_slice))
                 self.decoder.hl = hl.sigmoid().detach()
                 # print(f"\t (Outside max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
                 
         # import pdb; pdb.set_trace()
         outs = torch.cat([_pad_tensor(o, bs) for o in outs], dim=1)
+        inps = input[:, -outs.shape[1]:] # the ofsetted tokens for the outs
         mask = torch.cat(masks, dim=1)
-        return outs,mask
+        return inps, outs, mask
 
 # %% ../../../nbs/02_text.models.core.ipynb 16
 def masked_concat_pool(output, mask, bptt):
@@ -115,6 +115,9 @@ class XPoolingLinearClassifier(Module):
 from ...layers import _create_bias
 
 # %% ../../../nbs/02_text.models.core.ipynb 21
+from ...utils import *
+
+# %% ../../../nbs/02_text.models.core.ipynb 22
 class LabelAttentionClassifier(Module):
     initrange=0.1
     def __init__(self, n_hidden, n_lbs, y_range=None):
@@ -125,9 +128,10 @@ class LabelAttentionClassifier(Module):
         self.hl = torch.zeros(1)
     
     def forward(self, sentc):
-        if isinstance(sentc, tuple): sentc, mask = sentc # sentc is the stuff coming outta SentenceEncoder i.e., shape (bs, max_len, nh) in other words the concatenated output of the AWD_LSTM
+        if isinstance(sentc, tuple): inp, sentc, mask = sentc # sentc is the stuff coming outta SentenceEncoder i.e., shape (bs, max_len, nh) in other words the concatenated output of the AWD_LSTM
+        test_eqs(inp.shape, sentc.shape[:-1], mask.shape)
         sentc = sentc.masked_fill(mask[:, :, None], 0)
-        attn, wgts = self.pay_attn(sentc, mask) #shape (bs, n_lbs, n_hidden)
+        attn, wgts = self.pay_attn(inp, sentc, mask) #shape (bs, n_lbs, n_hidden)
         attn = self.boost_attn(attn) # shape (bs, n_lbs, n_hidden)
         bs = self.hl.size(0)
         self.hl = self.hl.to(sentc.device)
@@ -136,7 +140,7 @@ class LabelAttentionClassifier(Module):
         if self.y_range is not None: pred = sigmoid_range(pred, *self.y_range)
         return pred, attn, wgts 
 
-# %% ../../../nbs/02_text.models.core.ipynb 24
+# %% ../../../nbs/02_text.models.core.ipynb 25
 def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
@@ -151,7 +155,7 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     model = SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)
 
-# %% ../../../nbs/02_text.models.core.ipynb 26
+# %% ../../../nbs/02_text.models.core.ipynb 27
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]

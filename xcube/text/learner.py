@@ -59,7 +59,7 @@ def _xml2brain(xml_vocab, brain_vocab, parent_bar=None):
     xml2brain_notfnd = [o for o in xml2brain if xml2brain[o] is np.inf]
     return xml2brain, xml2brain_notfnd
 
-# %% ../../nbs/03_text.learner.ipynb 28
+# %% ../../nbs/03_text.learner.ipynb 26
 def brainsplant(xml_vocab, brain_vocab, brain, device=None):
     toks_lbs = 'toks lbs'.split()
     # for i in master_bar(range(2)):
@@ -77,7 +77,7 @@ def brainsplant(xml_vocab, brain_vocab, brain, device=None):
     xml_brain[toks_map.itemgot(0)] = brain[toks_map.itemgot(1)][:, lbs_map.itemgot(1)][:, lbs_map.itemgot(0)] # permute toks dim to match xml and brain
     return xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
 
-# %% ../../nbs/03_text.learner.ipynb 37
+# %% ../../nbs/03_text.learner.ipynb 35
 def load_collab_keys(
     model, # Model architecture
     wgts:dict # Model weights
@@ -92,7 +92,11 @@ def load_collab_keys(
         sd['1.attn.lbs_weight_dp.emb.weight'] = i_weight.data.clone()
     return model.load_state_dict(sd)
 
-# %% ../../nbs/03_text.learner.ipynb 41
+# %% ../../nbs/03_text.learner.ipynb 39
+from ..layers import *
+from ..layers import _planted_attention
+
+# %% ../../nbs/03_text.learner.ipynb 40
 @delegates(Learner.__init__)
 class TextLearner(Learner):
     "Basic class for a `Learner` in NLP."
@@ -159,7 +163,11 @@ class TextLearner(Learner):
         vocab = L(_get_text_vocab(self.dls), _get_label_vocab(self.dls)).map(listify)
         print("Performing brainsplant...")
         self.brain, *_ = brainsplant(vocab, brain_vocab, brain)
+        print("Successfull!")
         # import pdb; pdb.set_trace()
+        plant_attn_layer = Lambda(Planted_Attention(self.brain))
+        setattr(self.model[1].pay_attn, 'attn', plant_attn_layer)
+        assert self.model[1].pay_attn.attn.func.f is _planted_attention
         return self
 
     def load_pretrained(self, 
@@ -208,10 +216,10 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 44
+# %% ../../nbs/03_text.learner.ipynb 43
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 45
+# %% ../../nbs/03_text.learner.ipynb 44
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, **kwargs):

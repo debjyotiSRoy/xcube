@@ -12,8 +12,8 @@ from fastai.text.models.awdlstm import EmbeddingDropout, RNNDropout
 from .utils import *
 
 # %% auto 0
-__all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Lookup_Attention', 'Ranked_Attention',
-           'lincomb', 'topkmax', 'XMLAttention']
+__all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Planted_Attention',
+           'Diff_Planted_Attention', 'lincomb', 'topkmax', 'XMLAttention']
 
 # %% ../nbs/01_layers.ipynb 13
 def _create_bias(size, with_zeros=False):
@@ -70,6 +70,12 @@ def _linear_attention(sentc:Tensor, # Sentence typically `(bs, bptt, nh)`
                   ):
     return sentc @ based_on.weight.transpose(0,1)
 
+# %% ../nbs/01_layers.ipynb 28
+def _planted_attention(sentc: Tensor, # Sentence typically `(bs, bptt)` containing the vocab idxs that goes inside the encoder
+                     brain: Tensor # label specific attn wgts for each token in vocab, typically of shape `(vocab_sz, n_lbs)`
+                     ):
+    return brain[sentc.long()]
+
 # %% ../nbs/01_layers.ipynb 30
 class _Pay_Attention:
     def __init__(self, f, based_on): store_attr('f,based_on')
@@ -79,10 +85,10 @@ class _Pay_Attention:
 def Linear_Attention(based_on: Module): return _Pay_Attention(_linear_attention, based_on)
 
 # %% ../nbs/01_layers.ipynb 33
-def Lookup_Attention(brain: Tensor): return _Pay_Attention(_lookup_attention, brain)
+def Planted_Attention(brain: Tensor): return _Pay_Attention(_planted_attention, brain)
 
 # %% ../nbs/01_layers.ipynb 35
-def Ranked_Attention(based_on: Module):
+def Diff_Planted_Attention(based_on: Module):
     # TODO: Deb Create an architecture same as the Learning2Rank Model here, so that we can preload it just like fastai preloads LM encoder during text classification.
     pass
 
@@ -115,10 +121,19 @@ class XMLAttention(Module):
         store_attr('n_lbs,emb_sz,embed_p')
         self.lbs = Embedding(n_lbs, emb_sz)
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
-        self.LinAttn = Lambda(Linear_Attention(self.lbs))
-
+        self.attn = Lambda(Linear_Attention(self.lbs))
+    
+    @property
+    def attn(self): return self._attn
+    @attn.setter
+    def attn(self, a): self._attn = a
+    
     def forward(self, inp, sentc, mask):
         # sent is the ouput of SentenceEncoder i.e., (bs, max_len tokens, nh)
         test_eqs(inp.shape, sentc.shape[:-1], mask.shape)
-        attn_wgts = F.softmax(self.LinAttn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+        if self.attn.func.f is _linear_attention:
+            attn_wgts = F.softmax(self.attn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+        elif self.attn.func.f is _planted_attention:
+            attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0)
+        else: raise NotImplementedError
         return lincomb(sentc, wgts=attn_wgts.transpose(1,2)), attn_wgts # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

@@ -60,7 +60,7 @@ def _xml2brain(xml_vocab, brain_vocab, parent_bar=None):
     return xml2brain, xml2brain_notfnd
 
 # %% ../../nbs/03_text.learner.ipynb 26
-def brainsplant(xml_vocab, brain_vocab, brain, device=None):
+def brainsplant(xml_vocab, brain_vocab, brain, brain_bias, device=None):
     toks_lbs = 'toks lbs'.split()
     # for i in master_bar(range(2)):
     # toks_xml2brain, toks_notfnd = _xml2brain(xml_vocab[0], brain_vocab[0])
@@ -70,12 +70,14 @@ def brainsplant(xml_vocab, brain_vocab, brain, device=None):
         globals().update(dict(zip((toks_lbs[i]+'_xml2brain', toks_lbs[i]+'_notfnd'), (_xml2brain(xml_vocab[i], brain_vocab[i], parent_bar=mb)))))
         mb.write = f"Finished Loop {i}"
     xml_brain = torch.zeros(*xml_vocab.map(len)).to(default_device() if device is None else device) # initialize empty brain
+    xml_lbsbias = torch.zeros(len(xml_vocab[1])).to(default_device() if device is None else device)
     toks_map = L((xml_idx, brn_idx) for xml_idx, brn_idx in toks_xml2brain.items() if brn_idx is not np.inf) 
     lbs_map = L((xml_idx, brn_idx) for xml_idx, brn_idx in lbs_xml2brain.items() if brn_idx is not np.inf) 
     # xml_brain[toks_map.itemgot(0)] = brain[toks_map.itemgot(1)] # permute toks dim to match xml and brain
     # xml_brain[:, lbs_map.itemgot(0)] = xml_brain[:, lbs_map.itemgot(1)] # permute lbs dim to match xml and brain
     xml_brain[toks_map.itemgot(0)] = brain[toks_map.itemgot(1)][:, lbs_map.itemgot(1)][:, lbs_map.itemgot(0)] # permute toks dim to match xml and brain
-    return xml_brain, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
+    xml_lbsbias[lbs_map.itemgot(0)] = brain_bias[lbs_map.itemgot(1)][lbs_map.itemgot(0)] # permute toks dim to match xml and brain
+    return xml_brain, xml_lbsbias, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
 
 # %% ../../nbs/03_text.learner.ipynb 35
 def load_collab_keys(
@@ -150,19 +152,23 @@ class TextLearner(Learner):
         return self
     
     def load_brain(self,
-        file: str, # Filename of the saved attention wgts
+        file_wgts: str, # Filename of the saved attention wgts
+        file_bias: str, # Filename of the saved label bias
         device:(int,str,torch.device)=None # Device used to load, defaults to `dls` device
     ):
         """Load the pre-learnt label specific attention weights for each token from `file` located in the 
         model directory, optionally ensuring it's one `device`
         """
-        brain_path = join_path_file(file, self.path/self.model_dir, ext='.pkl')
-        brain_bootstrap = torch.load(brain_path, map_location=device)
+        brain_path = join_path_file(file_wgts, self.path/self.model_dir, ext='.pkl')
+        bias_path = join_path_file(file_bias, self.path/self.model_dir, ext='.pkl')
+        brain_bootstrap = torch.load(brain_path, map_location=default_device() if device is None else device)
         *brain_vocab, brain = mapt(brain_bootstrap.get, ['toks', 'lbs', 'mutual_info_jaccard'])
         brain_vocab = L(brain_vocab).map(listify)
         vocab = L(_get_text_vocab(self.dls), _get_label_vocab(self.dls)).map(listify)
+        brain_bias = torch.load(bias_path, map_location=default_device() if device is None else device)
+        brain_bias = brain_bias[:, :, 0].squeeze(-1)
         print("Performing brainsplant...")
-        self.brain, *_ = brainsplant(vocab, brain_vocab, brain)
+        self.brain, self.lbsbias, *_ = brainsplant(vocab, brain_vocab, brain, brain_bias)
         print("Successfull!")
         # import pdb; pdb.set_trace()
         plant_attn_layer = Lambda(Planted_Attention(self.brain))
@@ -222,13 +228,15 @@ from .models.core import _model_meta
 # %% ../../nbs/03_text.learner.ipynb 44
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
-                           lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, **kwargs):
+                           lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, **kwargs):
     "Create a `Learner` with a text classifier from `dls` and `arch`."
     vocab = _get_text_vocab(dls)
     if n_out is None: n_out = get_c(dls)
     assert n_out, "`n_out` is not defined, and could not be inferred from the data, set `dls.c` or pass `n_out`"
     model = get_xmltext_classifier2(arch, len(vocab), n_out, seq_len=seq_len, config=config, y_range=y_range,
-                                drop_mult=drop_mult, max_len=max_len)
+                                drop_mult=drop_mult, max_len=max_len, running_decoder=running_decoder)
+    # model = get_xmltext_classifier(arch, len(vocab), n_out, seq_len=seq_len, config=config, y_range=y_range,
+                                # drop_mult=drop_mult, max_len=max_len)
     meta = _model_meta[arch]
     learn = TextLearner(dls, model, splitter=splitter if splitter is not None else meta['split_clas'], **kwargs)
     url = 'url_bwd' if backwards else 'url'

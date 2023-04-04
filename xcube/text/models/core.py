@@ -45,14 +45,15 @@ class SentenceEncoder(Module):
                 outs.append(o)
                 masks.append(mask[:,i: min(i+self.bptt, sl)])
         outs = torch.cat([_pad_tensor(o, bs) for o in outs], dim=1)
+        inps = input[:, -outs.shape[1]:] # the ofsetted tokens for the outs
         mask = torch.cat(masks, dim=1)
-        return outs,mask
+        return inps,outs,mask
 
 # %% ../../../nbs/02_text.models.core.ipynb 14
 class AttentiveSentenceEncoder(Module):
     "Create an encoder over `module` that can process a full sentence."
-    def __init__(self, bptt, module, decoder, pad_idx=1, max_len=None): 
-        store_attr('bptt,module,decoder,pad_idx,max_len')
+    def __init__(self, bptt, module, decoder, pad_idx=1, max_len=None, running_decoder=True): 
+        store_attr('bptt,module,decoder,pad_idx,max_len,running_decoder')
         self.n_lbs = getattr(self.decoder, 'n_lbs', None)
         
     def reset(self): 
@@ -74,12 +75,12 @@ class AttentiveSentenceEncoder(Module):
                 outs.append(o)
                 masks.append(mask[:, chunk])
                 # print(f"\t\t (Within max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
-            else:
+            elif self.running_decoder:
                 mask_slice = mask[:real_bs, chunk] 
                 inp = input[:real_bs, chunk]
                 # import pdb; pdb.set_trace()
                 hl, *_ = self.decoder((inp, o, mask_slice))
-                self.decoder.hl = hl.sigmoid().detach()
+                self.decoder.hl = hl.sigmoid()#.detach()
                 # print(f"\t (Outside max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
                 
         # import pdb; pdb.set_trace()
@@ -156,7 +157,7 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     return model if init is None else model.apply(init)
 
 # %% ../../../nbs/02_text.models.core.ipynb 27
-def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
+def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
     config = ifnone(config, meta['config_clas']).copy()
@@ -166,6 +167,6 @@ def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, dr
     config.pop('output_p')
     init = config.pop('init') if 'init' in config else None
     decoder = LabelAttentionClassifier(n_hidden, n_class, y_range=y_range)
-    encoder = AttentiveSentenceEncoder(seq_len, arch(vocab_sz, **config), decoder, pad_idx=pad_idx, max_len=max_len)
+    encoder = AttentiveSentenceEncoder(seq_len, arch(vocab_sz, **config), decoder, pad_idx=pad_idx, max_len=max_len, running_decoder=running_decoder)
     model =  SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)

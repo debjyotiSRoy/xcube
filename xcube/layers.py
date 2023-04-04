@@ -13,7 +13,7 @@ from .utils import *
 
 # %% auto 0
 __all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Planted_Attention',
-           'Diff_Planted_Attention', 'lincomb', 'topkmax', 'unattention', 'XMLAttention']
+           'Diff_Planted_Attention', 'lincomb', 'XMLAttention']
 
 # %% ../nbs/01_layers.ipynb 13
 def _create_bias(size, with_zeros=False):
@@ -98,36 +98,38 @@ def lincomb(t, wgts=None):
     if wgts is None: wgts = t.new_ones(t.size(0), 1, t.size(1))
     return torch.bmm(wgts, t) # wgts@t
 
-# %% ../nbs/01_layers.ipynb 38
-@torch.no_grad()
-def topkmax(x, k=None, dim=1):
-    """
-    returns softmax of the 1th dim of 3d tensor x after zeroing out values in x smaller than `k`th largest.
-    If k is `None` behaves like `x.softmax(dim=dim). Intuitively, `topkmax` hedges more compared to `F.softmax``
-    """
-    if dim!=1: raise NotImplementedError
-    k = min(k if k is not None else np.inf, x.size(dim)-1)
-    kth_largest = x.sort(dim=dim, descending=True).values[:,k,:][:,None,:].repeat(1, x.size(dim), 1)
-    x[x < kth_largest] = 0.
-    return x.softmax(dim=1)
-
 # %% ../nbs/01_layers.ipynb 39
+@patch
 @torch.no_grad()
-def unattention(x, k=None, dim=1):
+def topkmax(self:Tensor, k=None, dim=1):
     """
     returns softmax of the 1th dim of 3d tensor x after zeroing out values in x smaller than `k`th largest.
     If k is `None` behaves like `x.softmax(dim=dim). Intuitively, `topkmax` hedges more compared to `F.softmax``
     """
     if dim!=1: raise NotImplementedError
-    k = min(k if k is not None else np.inf, x.size(dim)-1)
-    kth_largest = x.sort(dim=dim, descending=True).values[:,k,:][:,None,:].repeat(1, x.size(dim), 1)
-    x[x < kth_largest] = 0.
-    return x
+    k = min(k if k is not None else np.inf, self.size(dim)-1)
+    kth_largest = self.sort(dim=dim, descending=True).values[:,k,:][:,None,:].repeat(1, self.size(dim), 1)
+    self[self < kth_largest] = 0.
+    return self.softmax(dim=1)
 
-# %% ../nbs/01_layers.ipynb 42
-from .utils import *
+# %% ../nbs/01_layers.ipynb 40
+@patch
+@torch.no_grad()
+def inattention(self:Tensor, k=None, dim=1):
+    """
+    returns softmax of the 1th dim of 3d tensor x after zeroing out values in x smaller than `k`th largest.
+    If k is `None` behaves like `x.softmax(dim=dim). Intuitively, `topkmax` hedges more compared to `F.softmax``
+    """
+    if dim!=1: raise NotImplementedError
+    k = min(k if k is not None else np.inf, self.size(dim)-1)
+    kth_largest = self.sort(dim=dim, descending=True).values[:,k,:][:,None,:].repeat(1, self.size(dim), 1)
+    self[self < kth_largest] = 0.
+    return self
 
 # %% ../nbs/01_layers.ipynb 43
+from .utils import *
+
+# %% ../nbs/01_layers.ipynb 44
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):
@@ -147,6 +149,6 @@ class XMLAttention(Module):
         if self.attn.func.f is _linear_attention:
             attn_wgts = F.softmax(self.attn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
         elif self.attn.func.f is _planted_attention:
-            attn_wgts = unattention(self.attn(inp).masked_fill(mask[:,:,None], 0), k=15)
+            attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=15, dim=1)
         else: raise NotImplementedError
         return lincomb(sentc, wgts=attn_wgts.transpose(1,2)), attn_wgts # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

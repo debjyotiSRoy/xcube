@@ -98,7 +98,7 @@ def lincomb(t, wgts=None):
     if wgts is None: wgts = t.new_ones(t.size(0), 1, t.size(1))
     return torch.bmm(wgts, t) # wgts@t
 
-# %% ../nbs/01_layers.ipynb 39
+# %% ../nbs/01_layers.ipynb 38
 @patch
 @torch.no_grad()
 def topkmax(self:Tensor, k=None, dim=1):
@@ -112,7 +112,7 @@ def topkmax(self:Tensor, k=None, dim=1):
     self[self < kth_largest] = 0.
     return self.softmax(dim=1)
 
-# %% ../nbs/01_layers.ipynb 40
+# %% ../nbs/01_layers.ipynb 39
 @patch
 @torch.no_grad()
 def inattention(self:Tensor, k=None, dim=1):
@@ -126,10 +126,10 @@ def inattention(self:Tensor, k=None, dim=1):
     self[self < kth_largest] = 0.
     return self
 
-# %% ../nbs/01_layers.ipynb 43
+# %% ../nbs/01_layers.ipynb 42
 from .utils import *
 
-# %% ../nbs/01_layers.ipynb 44
+# %% ../nbs/01_layers.ipynb 43
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):

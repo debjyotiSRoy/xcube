@@ -66,39 +66,45 @@ class Embedding(nn.Embedding):
 
 # %% ../nbs/01_layers.ipynb 26
 def _linear_attention(sentc:Tensor, # Sentence typically `(bs, bptt, nh)`
-                   based_on: nn.Embedding|Module # xcube's `Embedding(n_lbs, nh)` layer holding the label embeddings or a full fledged model
+                      based_on: nn.Embedding|Module # xcube's `Embedding(n_lbs, nh)` layer holding the label embeddings or a full fledged model
                   ):
     return sentc @ based_on.weight.transpose(0,1)
 
 # %% ../nbs/01_layers.ipynb 28
 def _planted_attention(sentc: Tensor, # Sentence typically `(bs, bptt)` containing the vocab idxs that goes inside the encoder
-                     brain: Tensor # label specific attn wgts for each token in vocab, typically of shape `(vocab_sz, n_lbs)`
+                       brain: Tensor # label specific attn wgts for each token in vocab, typically of shape `(vocab_sz, n_lbs)`
                      ):
     return brain[sentc.long()]
 
 # %% ../nbs/01_layers.ipynb 30
+def _diffntble_attention(inp: Tensor, # Sentence typically `(bs, bptt)` containing the vocab idxs that goes inside the encoder
+                         based_on: nn.ModuleDict # dictionary of pretrained `nn.Embedding` from l2r model
+                        ):
+    pass
+
+# %% ../nbs/01_layers.ipynb 32
 class _Pay_Attention:
     def __init__(self, f, based_on): store_attr('f,based_on')
     def __call__(self, sentc): return self.f(sentc, self.based_on)
 
-# %% ../nbs/01_layers.ipynb 31
+# %% ../nbs/01_layers.ipynb 33
 def Linear_Attention(based_on: Module): return _Pay_Attention(_linear_attention, based_on)
 
-# %% ../nbs/01_layers.ipynb 33
+# %% ../nbs/01_layers.ipynb 35
 def Planted_Attention(brain: Tensor): return _Pay_Attention(_planted_attention, brain)
 
-# %% ../nbs/01_layers.ipynb 35
+# %% ../nbs/01_layers.ipynb 37
 def Diff_Planted_Attention(based_on: Module):
     # TODO: Deb Create an architecture same as the Learning2Rank Model here, so that we can preload it just like fastai preloads LM encoder during text classification.
     pass
 
-# %% ../nbs/01_layers.ipynb 36
+# %% ../nbs/01_layers.ipynb 38
 def lincomb(t, wgts=None):
     "returns the linear combination of the dim1 of a 3d tensor of `t` based on `wgts` (if `wgts` is `None` just adds the rows)"
     if wgts is None: wgts = t.new_ones(t.size(0), 1, t.size(1))
     return torch.bmm(wgts, t) # wgts@t
 
-# %% ../nbs/01_layers.ipynb 38
+# %% ../nbs/01_layers.ipynb 40
 @patch
 @torch.no_grad()
 def topkmax(self:Tensor, k=None, dim=1):
@@ -112,7 +118,7 @@ def topkmax(self:Tensor, k=None, dim=1):
     self[self < kth_largest] = 0.
     return self.softmax(dim=1)
 
-# %% ../nbs/01_layers.ipynb 39
+# %% ../nbs/01_layers.ipynb 41
 @patch
 @torch.no_grad()
 def inattention(self:Tensor, k=None, dim=1):
@@ -126,10 +132,10 @@ def inattention(self:Tensor, k=None, dim=1):
     self[self < kth_largest] = 0.
     return self
 
-# %% ../nbs/01_layers.ipynb 42
+# %% ../nbs/01_layers.ipynb 44
 from .utils import *
 
-# %% ../nbs/01_layers.ipynb 43
+# %% ../nbs/01_layers.ipynb 45
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):
@@ -147,8 +153,13 @@ class XMLAttention(Module):
         # sent is the ouput of SentenceEncoder i.e., (bs, max_len tokens, nh)
         test_eqs(inp.shape, sentc.shape[:-1], mask.shape)
         if self.attn.func.f is _linear_attention:
-            attn_wgts = F.softmax(self.attn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+            top_tok_attn_wgts = F.softmax(self.attn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+            lbs_cf = None
         elif self.attn.func.f is _planted_attention:
-            attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=15, dim=1)
+            # import pdb; pdb.set_trace()
+            attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0)
+            top_tok_attn_wgts = attn_wgts.inattention(k=15, dim=1)
+            top_lbs_attn_wgts = attn_wgts.clone().permute(0,2,1).inattention(k=5).permute(0,2,1).contiguous() # applying `inattention` across the lbs dim
+            lbs_cf = top_lbs_attn_wgts.sum(dim=1) #shape (bs, n_lbs)
         else: raise NotImplementedError
-        return lincomb(sentc, wgts=attn_wgts.transpose(1,2)), attn_wgts # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
+        return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

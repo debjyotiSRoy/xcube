@@ -80,7 +80,7 @@ class AttentiveSentenceEncoder(Module):
                 inp = input[:real_bs, chunk]
                 # import pdb; pdb.set_trace()
                 hl, *_ = self.decoder((inp, o, mask_slice))
-                self.decoder.hl = hl.sigmoid().detach()
+                self.decoder.hl = hl.sigmoid()#.detach()
                 # print(f"\t (Outside max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
                 
         # import pdb; pdb.set_trace()

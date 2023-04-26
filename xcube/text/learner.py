@@ -75,7 +75,7 @@ def brainsplant(xml_vocab, brain_vocab, brain, brain_bias, device=None):
     xml_lbsbias[lbs_map.itemgot(0)] = brain_bias[lbs_map.itemgot(1)].clone() # permute toks dim to match xml and brain
     return xml_brain, xml_lbsbias, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain
 
-# %% ../../nbs/03_text.learner.ipynb 43
+# %% ../../nbs/03_text.learner.ipynb 54
 def load_collab_keys(
     model, # Model architecture
     wgts:dict # Model weights
@@ -90,11 +90,11 @@ def load_collab_keys(
         sd['1.attn.lbs_weight_dp.emb.weight'] = i_weight.data.clone()
     return model.load_state_dict(sd)
 
-# %% ../../nbs/03_text.learner.ipynb 47
+# %% ../../nbs/03_text.learner.ipynb 58
 from ..layers import *
 from ..layers import _planted_attention
 
-# %% ../../nbs/03_text.learner.ipynb 48
+# %% ../../nbs/03_text.learner.ipynb 59
 @delegates(Learner.__init__)
 class TextLearner(Learner):
     "Basic class for a `Learner` in NLP."
@@ -218,10 +218,10 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 51
+# %% ../../nbs/03_text.learner.ipynb 62
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 52
+# %% ../../nbs/03_text.learner.ipynb 63
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, **kwargs):

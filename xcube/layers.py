@@ -13,7 +13,7 @@ from .utils import *
 
 # %% auto 0
 __all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Planted_Attention',
-           'Diff_Planted_Attention', 'lincomb', 'XMLAttention']
+           'Diff_Planted_Attention', 'lincomb', 'split_sort', 'XMLAttention']
 
 # %% ../nbs/01_layers.ipynb 13
 def _create_bias(size, with_zeros=False):
@@ -119,23 +119,32 @@ def topkmax(self:Tensor, k=None, dim=1):
     return self.softmax(dim=1)
 
 # %% ../nbs/01_layers.ipynb 41
+def split_sort(t, sp_dim, sort_dim, sp_sz=500, **kwargs):
+    return torch.cat([s.sort(dim=sort_dim, **kwargs).values for s in torch.split(t, split_size_or_sections=sp_sz, dim=sp_dim)], dim=sp_dim)
+
+# %% ../nbs/01_layers.ipynb 43
 @patch
 @torch.no_grad()
-def inattention(self:Tensor, k=None, dim=1):
+def inattention(self:Tensor, k=None, sort_dim=0, sp_dim=0):
     """
-    returns softmax of the 1th dim of 3d tensor x after zeroing out values in x smaller than `k`th largest.
-    If k is `None` behaves like `x.softmax(dim=dim). Intuitively, `topkmax` hedges more compared to `F.softmax``
+    returns `self` after zeroing out values smaller than `k`th largest in dimension `dim`.
+    If k is `None` behaves like returns self.
     """
-    if dim!=1: raise NotImplementedError
-    k = min(k if k is not None else np.inf, self.size(dim)-1)
-    kth_largest = self.sort(dim=dim, descending=True).values[:,k,:][:,None,:].repeat(1, self.size(dim), 1)
-    self[self < kth_largest] = 0.
-    return self
+    k = min(k if k is not None else np.inf, self.size(sort_dim)-1)
+    k_slice= [slice(None)]*self.ndim
+    # rep = [1]*self.ndim
+    k_slice[sort_dim] = k
+    if len(k_slice) == 1: k_slice=k_slice[0]
+    # rep[sort_dim] = self.size(sort_dim)
+    kth_largest = split_sort(self, sp_dim=sp_dim, sort_dim=sort_dim, descending=True)[k_slice].unsqueeze(dim=sort_dim)#.repeat(*rep)
+    clone = self.detach().clone()
+    clone[clone < kth_largest] = 0.
+    return clone
 
-# %% ../nbs/01_layers.ipynb 44
+# %% ../nbs/01_layers.ipynb 46
 from .utils import *
 
-# %% ../nbs/01_layers.ipynb 45
+# %% ../nbs/01_layers.ipynb 47
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):
@@ -158,8 +167,8 @@ class XMLAttention(Module):
         elif self.attn.func.f is _planted_attention:
             # import pdb; pdb.set_trace()
             attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0)
-            top_tok_attn_wgts = attn_wgts.inattention(k=15, dim=1)
-            top_lbs_attn_wgts = attn_wgts.clone().permute(0,2,1).inattention(k=5).permute(0,2,1).contiguous() # applying `inattention` across the lbs dim
+            top_tok_attn_wgts = attn_wgts.inattention(k=15, sort_dim=1)
+            top_lbs_attn_wgts = attn_wgts.clone().permute(0,2,1).inattention(k=5, sort_dim=1).permute(0,2,1).contiguous() # applying `inattention` across the lbs dim
             lbs_cf = top_lbs_attn_wgts.sum(dim=1) #shape (bs, n_lbs)
         else: raise NotImplementedError
         return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

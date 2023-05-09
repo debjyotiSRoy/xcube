@@ -120,6 +120,7 @@ def topkmax(self:Tensor, k=None, dim=1):
 
 # %% ../nbs/01_layers.ipynb 41
 def split_sort(t, sp_dim, sort_dim, sp_sz=500, **kwargs):
+    if t.ndim==1: return t.sort(dim=sort_dim, **kwargs).values
     return torch.cat([s.sort(dim=sort_dim, **kwargs).values for s in torch.split(t, split_size_or_sections=sp_sz, dim=sp_dim)], dim=sp_dim)
 
 # %% ../nbs/01_layers.ipynb 43
@@ -141,10 +142,10 @@ def inattention(self:Tensor, k=None, sort_dim=0, sp_dim=0):
     clone[clone < kth_largest] = 0.
     return clone
 
-# %% ../nbs/01_layers.ipynb 46
+# %% ../nbs/01_layers.ipynb 47
 from .utils import *
 
-# %% ../nbs/01_layers.ipynb 47
+# %% ../nbs/01_layers.ipynb 48
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):

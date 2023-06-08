@@ -218,10 +218,21 @@ class TextLearner(Learner):
         self.freeze()
         return self
 
-# %% ../../nbs/03_text.learner.ipynb 62
-from .models.core import _model_meta 
+# %% ../../nbs/03_text.learner.ipynb 60
+@patch
+def save_decoder(self:LMLearner,
+                 file:str # Filename for `Decoder`
+    ):
+    "Save the decoder to `file` in the model directory"
+    if rank_distrib(): return # don't save if child proc
+    decoder = get_model(self.model)[1]
+    if hasattr(decoder, 'module'): decoder = decoder.module
+    torch.save(decoder.state_dict(), join_path_file(file, self.path/self.model_dir, ext='.pth'))
 
 # %% ../../nbs/03_text.learner.ipynb 63
+from .models.core import _model_meta 
+
+# %% ../../nbs/03_text.learner.ipynb 64
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, **kwargs):

@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.361">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="Tools to quickly build a collab Learner">
+
+<title>xcube - Collaborative filtering</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="xcube - Collaborative filtering">
+<meta property="og:description" content="Tools to quickly build a collab Learner">
+<meta property="og:site-name" content="xcube">
+<meta name="twitter:title" content="xcube - Collaborative filtering">
+<meta name="twitter:description" content="Tools to quickly build a collab Learner">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">xcube</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools ms-auto">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./collab.html">Collaborative filtering</a></li></ol></nav>
+      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+      </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">xcube</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./utils.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">utils</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./layers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layers</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.models.core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Core XML Text Modules</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.learner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Learner for the XML Text application:</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Metrics</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./collab.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Collaborative filtering</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./data.transforms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Transformation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.models.core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Models</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.gradients.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Gradients</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.learner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Learner</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R DataLoader</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.callbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Callbacks</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./data.external.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Downloading…</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.info_gain.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Information Gain</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.boot_l2r.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Boot L2R</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.stat.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stat</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.train_l2r.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Training</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.train_mimic3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training an XML Text Classifier</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.callbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XML Callbacks</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Tutorials</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#loading-usersitems-embeddings-from-a-pretrained-model" id="toc-loading-usersitems-embeddings-from-a-pretrained-model" class="nav-link active" data-scroll-target="#loading-usersitems-embeddings-from-a-pretrained-model">Loading <code>users</code>/<code>items</code> embeddings from a pretrained model</a>
+  <ul class="collapse">
+  <li><a href="#match_embeds" id="toc-match_embeds" class="nav-link" data-scroll-target="#match_embeds">match_embeds</a></li>
+  </ul></li>
+  <li><a href="#create-a-learner" id="toc-create-a-learner" class="nav-link" data-scroll-target="#create-a-learner">Create a <code>Learner</code></a>
+  <ul class="collapse">
+  <li><a href="#load_pretrained_keys" id="toc-load_pretrained_keys" class="nav-link" data-scroll-target="#load_pretrained_keys">load_pretrained_keys</a></li>
+  <li><a href="#collablearner" id="toc-collablearner" class="nav-link" data-scroll-target="#collablearner">CollabLearner</a></li>
+  <li><a href="#collab_learner" id="toc-collab_learner" class="nav-link" data-scroll-target="#collab_learner">collab_learner</a></li>
+  </ul></li>
+  </ul>
+<div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/debjyotiSRoy/xcube/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Collaborative filtering</h1>
+</div>
+
+<div>
+  <div class="description">
+    Tools to quickly build a collab Learner
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<p>This module adds to the tools from <a href="https://docs.fast.ai/collab.html">fastai collab</a> to use transfer learning by loading embeddings needed for collaborative filtering from a pretrained model. Additionally, it also adds the capability of saving the vocabulary the collab model was trained on. The most important function in this module is <a href="https://debjyotiSRoy.github.io/xcube/collab.html#collab_learner"><code>collab_learner</code></a>.</p>
+<section id="loading-usersitems-embeddings-from-a-pretrained-model" class="level2">
+<h2 class="anchored" data-anchor-id="loading-usersitems-embeddings-from-a-pretrained-model">Loading <code>users</code>/<code>items</code> embeddings from a pretrained model</h2>
+<p>In a collab model, to load a pretrained vocabulary, we need to adapt the embeddings of the vocabulary used for the pre-training to the vocabulary of our current collab corpus.</p>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/collab.py#L11" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="match_embeds" class="level3">
+<h3 class="anchored" data-anchor-id="match_embeds">match_embeds</h3>
+<blockquote class="blockquote">
+<pre><code> match_embeds (old_wgts:dict, old_vocab:list, new_vocab:dict)</code></pre>
+</blockquote>
+<p>Convert the <code>users</code> and <code>items</code> (possibly saved as <code>0.module.encoder.weight</code> and <code>1.attn.lbs_weight.weight</code> respectively) embedding in <code>old_wgts</code> to go from <code>old_vocab</code> to <code>new_vocab</code></p>
+<table class="table">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 38%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>old_wgts</td>
+<td>dict</td>
+<td>Embedding weights of the pretrained model</td>
+</tr>
+<tr class="even">
+<td>old_vocab</td>
+<td>list</td>
+<td>Vocabulary (tokens and labels) of the corpus used for pretraining</td>
+</tr>
+<tr class="odd">
+<td>new_vocab</td>
+<td>dict</td>
+<td>Current collab corpus vocabulary (<code>users</code> and <code>items</code>)</td>
+</tr>
+<tr class="even">
+<td><strong>Returns</strong></td>
+<td><strong>dict</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="create-a-learner" class="level2">
+<h2 class="anchored" data-anchor-id="create-a-learner">Create a <code>Learner</code></h2>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/collab.py#L55" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="load_pretrained_keys" class="level3">
+<h3 class="anchored" data-anchor-id="load_pretrained_keys">load_pretrained_keys</h3>
+<blockquote class="blockquote">
+<pre><code> load_pretrained_keys (model, wgts:dict)</code></pre>
+</blockquote>
+<p>Load relevant pretrained <code>wgts</code> in `model</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>model</td>
+<td></td>
+<td>Model architecture</td>
+</tr>
+<tr class="even">
+<td>wgts</td>
+<td>dict</td>
+<td>Model weights</td>
+</tr>
+<tr class="odd">
+<td><strong>Returns</strong></td>
+<td><strong>tuple</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/collab.py#L70" target="_blank" style="float:right; font-size:smaller">source</a></p>
+</section>
+<section id="collablearner" class="level3">
+<h3 class="anchored" data-anchor-id="collablearner">CollabLearner</h3>
+<blockquote class="blockquote">
+<pre><code> CollabLearner (dls:DataLoaders, model:callable,
+                loss_func:callable|None=None,
+                opt_func:Optimizer|OptimWrapper=&lt;function Adam&gt;,
+                lr:float|slice=0.001, splitter:callable=&lt;function
+                trainable_params&gt;, cbs:Callback|MutableSequence|None=None,
+                metrics:callable|MutableSequence|None=None,
+                path:str|Path|None=None, model_dir:str|Path='models',
+                wd:float|int|None=None, wd_bn_bias:bool=False,
+                train_bn:bool=True, moms:tuple=(0.95, 0.85, 0.95),
+                default_cbs:bool=True)</code></pre>
+</blockquote>
+<p>Basic class for a <code>Learner</code> in Collab.</p>
+<table class="table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 25%">
+<col style="width: 34%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dls</td>
+<td>DataLoaders</td>
+<td></td>
+<td><code>DataLoaders</code> containing fastai or PyTorch <code>DataLoader</code>s</td>
+</tr>
+<tr class="even">
+<td>model</td>
+<td>callable</td>
+<td></td>
+<td>PyTorch model for training or inference</td>
+</tr>
+<tr class="odd">
+<td>loss_func</td>
+<td>callable | None</td>
+<td>None</td>
+<td>Loss function. Defaults to <code>dls</code> loss</td>
+</tr>
+<tr class="even">
+<td>opt_func</td>
+<td>Optimizer | OptimWrapper</td>
+<td>Adam</td>
+<td>Optimization function for training</td>
+</tr>
+<tr class="odd">
+<td>lr</td>
+<td>float | slice</td>
+<td>0.001</td>
+<td>Default learning rate</td>
+</tr>
+<tr class="even">
+<td>splitter</td>
+<td>callable</td>
+<td>trainable_params</td>
+<td>Split model into parameter groups. Defaults to one parameter group</td>
+</tr>
+<tr class="odd">
+<td>cbs</td>
+<td>Callback | MutableSequence | None</td>
+<td>None</td>
+<td><code>Callback</code>s to add to <code>Learner</code></td>
+</tr>
+<tr class="even">
+<td>metrics</td>
+<td>callable | MutableSequence | None</td>
+<td>None</td>
+<td><code>Metric</code>s to calculate on validation set</td>
+</tr>
+<tr class="odd">
+<td>path</td>
+<td>str | Path | None</td>
+<td>None</td>
+<td>Parent directory to save, load, and export models. Defaults to <code>dls</code> <code>path</code></td>
+</tr>
+<tr class="even">
+<td>model_dir</td>
+<td>str | Path</td>
+<td>models</td>
+<td>Subdirectory to save and load models</td>
+</tr>
+<tr class="odd">
+<td>wd</td>
+<td>float | int | None</td>
+<td>None</td>
+<td>Default weight decay</td>
+</tr>
+<tr class="even">
+<td>wd_bn_bias</td>
+<td>bool</td>
+<td>False</td>
+<td>Apply weight decay to normalization and bias parameters</td>
+</tr>
+<tr class="odd">
+<td>train_bn</td>
+<td>bool</td>
+<td>True</td>
+<td>Train frozen normalization layers</td>
+</tr>
+<tr class="even">
+<td>moms</td>
+<td>tuple</td>
+<td>(0.95, 0.85, 0.95)</td>
+<td>Default momentum for schedulers</td>
+</tr>
+<tr class="odd">
+<td>default_cbs</td>
+<td>bool</td>
+<td>True</td>
+<td>Include default <code>Callback</code>s</td>
+</tr>
+</tbody>
+</table>
+<p>It works exactly as a normal <code>learner</code>, the only difference is that it also saves the <code>items</code> vocabulary used by <code>self.model</code></p>
+<p>The following function lets us quickly create a <code>Learner</code> for collaborative filtering from the data.</p>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/collab.py#L103" target="_blank" style="float:right; font-size:smaller">source</a></p>
+</section>
+<section id="collab_learner" class="level3">
+<h3 class="anchored" data-anchor-id="collab_learner">collab_learner</h3>
+<blockquote class="blockquote">
+<pre><code> collab_learner (dls, n_factors=50, use_nn=False, emb_szs=None,
+                 layers=None, config=None, y_range=None, loss_func=None,
+                 pretrained=False, opt_func:Union[fastai.optimizer.Optimiz
+                 er,fastai.optimizer.OptimWrapper]=&lt;function Adam&gt;,
+                 lr:Union[float,slice]=0.001, splitter:&lt;built-
+                 infunctioncallable&gt;=&lt;function trainable_params&gt;, cbs:Unio
+                 n[fastai.callback.core.Callback,collections.abc.MutableSe
+                 quence,NoneType]=None, metrics:Union[&lt;built-infunctioncal
+                 lable&gt;,collections.abc.MutableSequence,NoneType]=None,
+                 path:Union[str,pathlib.Path,NoneType]=None,
+                 model_dir:Union[str,pathlib.Path]='models',
+                 wd:Union[float,int,NoneType]=None, wd_bn_bias:bool=False,
+                 train_bn:bool=True, moms:tuple=(0.95, 0.85, 0.95),
+                 default_cbs:bool=True)</code></pre>
+</blockquote>
+<p>Create a Learner for collaborative filtering on <code>dls</code>.</p>
+<table class="table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 25%">
+<col style="width: 34%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dls</td>
+<td>DataLoaders</td>
+<td></td>
+<td><code>DataLoaders</code> containing fastai or PyTorch <code>DataLoader</code>s</td>
+</tr>
+<tr class="even">
+<td>n_factors</td>
+<td>int</td>
+<td>50</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>use_nn</td>
+<td>bool</td>
+<td>False</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>emb_szs</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>layers</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>config</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>y_range</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>loss_func</td>
+<td>callable | None</td>
+<td>None</td>
+<td>Loss function. Defaults to <code>dls</code> loss</td>
+</tr>
+<tr class="odd">
+<td>pretrained</td>
+<td>bool</td>
+<td>False</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>opt_func</td>
+<td>Optimizer | OptimWrapper</td>
+<td>Adam</td>
+<td>Optimization function for training</td>
+</tr>
+<tr class="odd">
+<td>lr</td>
+<td>float | slice</td>
+<td>0.001</td>
+<td>Default learning rate</td>
+</tr>
+<tr class="even">
+<td>splitter</td>
+<td>callable</td>
+<td>trainable_params</td>
+<td>Split model into parameter groups. Defaults to one parameter group</td>
+</tr>
+<tr class="odd">
+<td>cbs</td>
+<td>Callback | MutableSequence | None</td>
+<td>None</td>
+<td><code>Callback</code>s to add to <code>Learner</code></td>
+</tr>
+<tr class="even">
+<td>metrics</td>
+<td>callable | MutableSequence | None</td>
+<td>None</td>
+<td><code>Metric</code>s to calculate on validation set</td>
+</tr>
+<tr class="odd">
+<td>path</td>
+<td>str | Path | None</td>
+<td>None</td>
+<td>Parent directory to save, load, and export models. Defaults to <code>dls</code> <code>path</code></td>
+</tr>
+<tr class="even">
+<td>model_dir</td>
+<td>str | Path</td>
+<td>models</td>
+<td>Subdirectory to save and load models</td>
+</tr>
+<tr class="odd">
+<td>wd</td>
+<td>float | int | None</td>
+<td>None</td>
+<td>Default weight decay</td>
+</tr>
+<tr class="even">
+<td>wd_bn_bias</td>
+<td>bool</td>
+<td>False</td>
+<td>Apply weight decay to normalization and bias parameters</td>
+</tr>
+<tr class="odd">
+<td>train_bn</td>
+<td>bool</td>
+<td>True</td>
+<td>Train frozen normalization layers</td>
+</tr>
+<tr class="even">
+<td>moms</td>
+<td>tuple</td>
+<td>(0.95, 0.85, 0.95)</td>
+<td>Default momentum for schedulers</td>
+</tr>
+<tr class="odd">
+<td>default_cbs</td>
+<td>bool</td>
+<td>True</td>
+<td>Include default <code>Callback</code>s</td>
+</tr>
+</tbody>
+</table>
+<p>If <code>use_nn=False</code>, the model used is an <code>EmbeddingDotBias</code> with <code>n_factors</code> and <code>y_range</code>. Otherwise, it’s a <code>EmbeddingNN</code> for which you can pass <code>emb_szs</code> (will be inferred from the <code>dls</code> with <code>get_emb_sz</code> if you don’t provide any), <code>layers</code> (defaults to <code>[n_factors]</code>) <code>y_range</code>, and a <code>config</code> that you can create with <code>tabular_config</code> to customize your model.</p>
+<p><code>loss_func</code> will default to <code>MSELossFlat</code> and all the other arguments are passed to <code>Learner</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>path <span class="op">=</span> untar_data(URLs.ML_SAMPLE)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>ratings <span class="op">=</span> pd.read_csv(path<span class="op">/</span><span class="st">'ratings.csv'</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>ratings.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">userId</th>
+<th data-quarto-table-cell-role="th">movieId</th>
+<th data-quarto-table-cell-role="th">rating</th>
+<th data-quarto-table-cell-role="th">timestamp</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>73</td>
+<td>1097</td>
+<td>4.0</td>
+<td>1255504951</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>561</td>
+<td>924</td>
+<td>3.5</td>
+<td>1172695223</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>157</td>
+<td>260</td>
+<td>3.5</td>
+<td>1291598691</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>358</td>
+<td>1210</td>
+<td>5.0</td>
+<td>957481884</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>130</td>
+<td>316</td>
+<td>2.0</td>
+<td>1138999234</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>dls <span class="op">=</span> CollabDataLoaders.from_df(ratings, bs<span class="op">=</span><span class="dv">64</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>dls.show_batch()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">userId</th>
+<th data-quarto-table-cell-role="th">movieId</th>
+<th data-quarto-table-cell-role="th">rating</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>199</td>
+<td>3578</td>
+<td>4.0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>564</td>
+<td>165</td>
+<td>4.0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>664</td>
+<td>1198</td>
+<td>4.5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>608</td>
+<td>1682</td>
+<td>4.0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>654</td>
+<td>1</td>
+<td>5.0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>213</td>
+<td>457</td>
+<td>4.0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>56</td>
+<td>58559</td>
+<td>5.0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>292</td>
+<td>597</td>
+<td>4.5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>102</td>
+<td>1036</td>
+<td>4.0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>262</td>
+<td>3578</td>
+<td>2.5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> tempfile.TemporaryDirectory() <span class="im">as</span> d:</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    learn <span class="op">=</span> collab_learner(dls, y_range<span class="op">=</span>(<span class="dv">0</span>,<span class="dv">5</span>), path<span class="op">=</span>d)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    learn.fit(<span class="dv">1</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Test save created a file</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    learn.save(<span class="st">'tmp'</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (Path(d)<span class="op">/</span><span class="st">'models/tmp.pth'</span>).exists()</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (Path(d)<span class="op">/</span><span class="st">'models/tmp_vocab.pkl'</span>).exists()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th">epoch</th>
+<th data-quarto-table-cell-role="th">train_loss</th>
+<th data-quarto-table-cell-role="th">valid_loss</th>
+<th data-quarto-table-cell-role="th">time</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td>2.480442</td>
+<td>2.294809</td>
+<td>00:00</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

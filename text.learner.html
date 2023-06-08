@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.361">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="All the functions necessary to build Learner suitable for transfer learning in XML text classification.">
+
+<title>xcube - Learner for the XML Text application:</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="xcube - Learner for the XML Text application:">
+<meta property="og:description" content="All the functions necessary to build Learner suitable for transfer learning in XML text classification.">
+<meta property="og:site-name" content="xcube">
+<meta name="twitter:title" content="xcube - Learner for the XML Text application:">
+<meta name="twitter:description" content="All the functions necessary to build Learner suitable for transfer learning in XML text classification.">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">xcube</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools ms-auto">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./text.learner.html">Learner for the XML Text application:</a></li></ol></nav>
+      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+      </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">xcube</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./utils.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">utils</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./layers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layers</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.models.core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Core XML Text Modules</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.learner.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Learner for the XML Text application:</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Metrics</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./collab.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Collaborative filtering</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./data.transforms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Transformation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.models.core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Models</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.gradients.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Gradients</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.learner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Learner</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R DataLoader</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.callbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Callbacks</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./data.external.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Downloading…</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.info_gain.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Information Gain</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.boot_l2r.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Boot L2R</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.stat.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stat</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.train_l2r.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Training</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.train_mimic3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training an XML Text Classifier</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.callbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XML Callbacks</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Tutorials</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#loading-label-embeddings-from-a-pretrained-colab-model" id="toc-loading-label-embeddings-from-a-pretrained-colab-model" class="nav-link active" data-scroll-target="#loading-label-embeddings-from-a-pretrained-colab-model">Loading label embeddings from a pretrained colab model</a>
+  <ul class="collapse">
+  <li><a href="#match_collab" id="toc-match_collab" class="nav-link" data-scroll-target="#match_collab">match_collab</a></li>
+  </ul></li>
+  <li><a href="#loading-pretrained-information-gain-as-attention" id="toc-loading-pretrained-information-gain-as-attention" class="nav-link" data-scroll-target="#loading-pretrained-information-gain-as-attention">Loading Pretrained Information Gain as Attention</a>
+  <ul class="collapse">
+  <li><a href="#brainsplant" id="toc-brainsplant" class="nav-link" data-scroll-target="#brainsplant">brainsplant</a></li>
+  </ul></li>
+  <li><a href="#base-learner-for-nlp" id="toc-base-learner-for-nlp" class="nav-link" data-scroll-target="#base-learner-for-nlp">Base <code>Learner</code> for NLP</a>
+  <ul class="collapse">
+  <li><a href="#load_collab_keys" id="toc-load_collab_keys" class="nav-link" data-scroll-target="#load_collab_keys">load_collab_keys</a></li>
+  <li><a href="#textlearner" id="toc-textlearner" class="nav-link" data-scroll-target="#textlearner">TextLearner</a></li>
+  <li><a href="#lmlearner.save_decoder" id="toc-lmlearner.save_decoder" class="nav-link" data-scroll-target="#lmlearner.save_decoder">LMLearner.save_decoder</a></li>
+  </ul></li>
+  <li><a href="#learner-convenience-functions" id="toc-learner-convenience-functions" class="nav-link" data-scroll-target="#learner-convenience-functions"><code>Learner</code> convenience functions</a>
+  <ul class="collapse">
+  <li><a href="#xmltext_classifier_learner" id="toc-xmltext_classifier_learner" class="nav-link" data-scroll-target="#xmltext_classifier_learner">xmltext_classifier_learner</a></li>
+  </ul></li>
+  </ul>
+<div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/debjyotiSRoy/xcube/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Learner for the XML Text application:</h1>
+</div>
+
+<div>
+  <div class="description">
+    All the functions necessary to build <code>Learner</code> suitable for transfer learning in XML text classification.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<p>The most important function of this module is <a href="https://debjyotiSRoy.github.io/xcube/text.learner.html#xmltext_classifier_learner"><code>xmltext_classifier_learner</code></a>. This will help you define a <code>Learner</code> using a pretrained Language Model for the encoder and a pretrained Learning-to-Rank-Model for the decoder. (Tutorial: Coming Soon!). This module is inspired from <a href="https://github.com/fastai/fastai">fastai’s</a> <a href="https://docs.fast.ai/text.learner.html">TextLearner</a> based on the paper <a href="https://arxiv.org/pdf/1801.06146.pdf">ULMFit</a>.</p>
+<section id="loading-label-embeddings-from-a-pretrained-colab-model" class="level2">
+<h2 class="anchored" data-anchor-id="loading-label-embeddings-from-a-pretrained-colab-model">Loading label embeddings from a pretrained colab model</h2>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/text/learner.py#L30" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="match_collab" class="level3">
+<h3 class="anchored" data-anchor-id="match_collab">match_collab</h3>
+<blockquote class="blockquote">
+<pre><code> match_collab (old_wgts:dict, collab_vocab:dict, lbs_vocab:list)</code></pre>
+</blockquote>
+<p>Convert the label embedding in <code>old_wgts</code> to go from <code>old_vocab</code> in colab to <code>lbs_vocab</code></p>
+<table class="table">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 38%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>old_wgts</td>
+<td>dict</td>
+<td>Embedding weights of the colab model</td>
+</tr>
+<tr class="even">
+<td>collab_vocab</td>
+<td>dict</td>
+<td>Vocabulary of <code>token</code> and <code>label</code> used for colab pre-training</td>
+</tr>
+<tr class="odd">
+<td>lbs_vocab</td>
+<td>list</td>
+<td>Current labels vocabulary</td>
+</tr>
+<tr class="even">
+<td><strong>Returns</strong></td>
+<td><strong>dict</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>wgts <span class="op">=</span> {<span class="st">'u_weight.weight'</span>: torch.randn(<span class="dv">3</span>,<span class="dv">5</span>), </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>        <span class="st">'i_weight.weight'</span>: torch.randn(<span class="dv">4</span>,<span class="dv">5</span>),</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">'u_bias.weight'</span>  : torch.randn(<span class="dv">3</span>,<span class="dv">1</span>),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">'i_bias.weight'</span>  : torch.randn(<span class="dv">4</span>,<span class="dv">1</span>)}</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>collab_vocab <span class="op">=</span> {<span class="st">'token'</span>: [<span class="st">'#na#'</span>, <span class="st">'sun'</span>, <span class="st">'moon'</span>, <span class="st">'earth'</span>, <span class="st">'mars'</span>],</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>                <span class="st">'label'</span>: [<span class="st">'#na#'</span>, <span class="st">'a'</span>, <span class="st">'c'</span>, <span class="st">'b'</span>]}</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>lbs_vocab <span class="op">=</span> [<span class="st">'a'</span>, <span class="st">'b'</span>, <span class="st">'c'</span>]</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>new_wgts, missing <span class="op">=</span> match_collab(wgts.copy(), collab_vocab, lbs_vocab)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>test_eq(missing, <span class="dv">0</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>test_close(wgts[<span class="st">'u_weight.weight'</span>], new_wgts[<span class="st">'u_weight.weight'</span>])</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>test_close(wgts[<span class="st">'u_bias.weight'</span>], new_wgts[<span class="st">'u_bias.weight'</span>])</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> ExceptionExpected(ex<span class="op">=</span><span class="pp">AssertionError</span>, regex<span class="op">=</span><span class="st">"close"</span>):</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    test_close(wgts[<span class="st">'i_weight.weight'</span>][<span class="dv">1</span>:], new_wgts[<span class="st">'i_weight.weight'</span>])</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    test_close(wgts[<span class="st">'i_bias.weight'</span>][<span class="dv">1</span>:], new_wgts[<span class="st">'i_bias.weight'</span>])</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>old_w, new_w <span class="op">=</span> wgts[<span class="st">'i_weight.weight'</span>], new_wgts[<span class="st">'i_weight.weight'</span>]</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>old_b, new_b <span class="op">=</span> wgts[<span class="st">'i_bias.weight'</span>], new_wgts[<span class="st">'i_bias.weight'</span>]</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (old_k,old_v), (new_k, new_v) <span class="kw">in</span> <span class="bu">zip</span>(wgts.items(), new_wgts.items()): </span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> old_k.startswith(<span class="st">'u'</span>): test_eq(old_v.size(), new_v.size())</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>: test_ne(old_v.size(), new_v.size())<span class="op">;</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># print(f"old: {old_k} = {old_v.size()}, new: {new_k} = {new_v.size()}")</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>test_eq(new_w[<span class="dv">0</span>], old_w[<span class="dv">1</span>])<span class="op">;</span> test_eq(new_b[<span class="dv">0</span>], old_b[<span class="dv">1</span>])</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>test_eq(new_w[<span class="dv">1</span>], old_w[<span class="dv">3</span>])<span class="op">;</span> test_eq(new_b[<span class="dv">1</span>], old_b[<span class="dv">3</span>])</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>test_eq(new_w[<span class="dv">2</span>], old_w[<span class="dv">2</span>])<span class="op">;</span> test_eq(new_b[<span class="dv">2</span>], old_b[<span class="dv">2</span>])</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>test_shuffled(<span class="bu">list</span>(old_b[<span class="dv">1</span>:].squeeze().numpy()), <span class="bu">list</span>(new_b.squeeze().numpy()))</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>test_eq(torch.sort(old_b[<span class="dv">1</span>:], dim<span class="op">=</span><span class="dv">0</span>)[<span class="dv">0</span>], torch.sort(new_b, dim<span class="op">=</span><span class="dv">0</span>)[<span class="dv">0</span>])</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>test_eq(torch.sort(old_w[<span class="dv">1</span>:], dim<span class="op">=</span><span class="dv">0</span>)[<span class="dv">0</span>], torch.sort(new_w, dim<span class="op">=</span><span class="dv">0</span>)[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="loading-pretrained-information-gain-as-attention" class="level2">
+<h2 class="anchored" data-anchor-id="loading-pretrained-information-gain-as-attention">Loading Pretrained Information Gain as Attention</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> xcube.l2r.<span class="bu">all</span> <span class="im">import</span> <span class="op">*</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>source_mimic <span class="op">=</span> untar_xxx(XURLs.MIMIC3)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>xml_vocab <span class="op">=</span> load_pickle(source_mimic<span class="op">/</span><span class="st">'mimic3-9k_clas_full_vocab.pkl'</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>xml_vocab <span class="op">=</span> L(xml_vocab).<span class="bu">map</span>(listify)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>source_l2r <span class="op">=</span> untar_xxx(XURLs.MIMIC3_L2R)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>boot_path <span class="op">=</span> join_path_file(<span class="st">'mimic3-9k_tok_lbl_info'</span>, source_l2r, ext<span class="op">=</span><span class="st">'.pkl'</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>bias_path <span class="op">=</span> join_path_file(<span class="st">'p_L'</span>, source_l2r, ext<span class="op">=</span><span class="st">'.pkl'</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>l2r_bootstrap <span class="op">=</span> torch.load(boot_path, map_location<span class="op">=</span>default_device())</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>brain_bias <span class="op">=</span> torch.load(bias_path, map_location<span class="op">=</span>default_device())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="op">*</span>brain_vocab, brain <span class="op">=</span> mapt(l2r_bootstrap.get, [<span class="st">'toks'</span>, <span class="st">'lbs'</span>, <span class="st">'mutual_info_jaccard'</span>])</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>brain_vocab <span class="op">=</span> L(brain_vocab).<span class="bu">map</span>(listify)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>toks, lbs <span class="op">=</span> brain_vocab</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"last two places in brain vocab has </span><span class="sc">{</span>toks[<span class="op">-</span><span class="dv">2</span>:]<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co"># toks = CategoryMap(toks, sort=False)</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>brain_bias <span class="op">=</span> brain_bias[:, :, <span class="dv">0</span>].squeeze(<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>lbs_des <span class="op">=</span> load_pickle(source_mimic<span class="op">/</span><span class="st">'code_desc.pkl'</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="bu">isinstance</span>(lbs_des, <span class="bu">dict</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>test_eq(brain.shape, (<span class="bu">len</span>(toks), <span class="bu">len</span>(lbs))) <span class="co"># last two places has 'xxfake'</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>test_eq(brain_bias.shape, [<span class="bu">len</span>(lbs)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>last two places in brain vocab has ['xxfake', 'xxfake']</code></pre>
+</div>
+</div>
+<p>The tokens which are there in the xml vocab but not in the brain:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>not_found_in_brain <span class="op">=</span> L(<span class="bu">set</span>(xml_vocab[<span class="dv">0</span>]).difference(<span class="bu">set</span>(brain_vocab[<span class="dv">0</span>])))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>not_found_in_brain</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>(#20) ['cella','q2day','remiained','luteinizing','promiscuity','sharpio','calcijex','dissension','mhc','theses'...]</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>test_fail(<span class="kw">lambda</span> : toks.index(<span class="st">'cella'</span>), contains<span class="op">=</span><span class="st">'is not in list'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The tokens which are in the brain but were not present in the xml vocab:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span>(brain_vocab[<span class="dv">0</span>]).difference(xml_vocab[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>set()</code></pre>
+</div>
+</div>
+<p>Thankfully, we have <code>info</code> for all the labels in the xml vocab:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="bu">set</span>(brain_vocab[<span class="dv">1</span>]).symmetric_difference(brain_vocab[<span class="dv">1</span>]) <span class="op">==</span> <span class="bu">set</span>()</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># test_shuffled(xml_vocab[1], mimic_vocab[1])</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>toks_xml2brain, toks_notfnd <span class="op">=</span> _xml2brain(xml_vocab[<span class="dv">0</span>], brain_vocab[<span class="dv">0</span>])</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>toks_found <span class="op">=</span> <span class="bu">set</span>(toks_xml2brain).difference(<span class="bu">set</span>(toks_notfnd))</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>test_shuffled(array(xml_vocab[<span class="dv">0</span>])[toks_notfnd], not_found_in_brain)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>some_xml_idxs <span class="op">=</span> np.random.choice(array(L(toks_found)), size<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>some_xml_toks <span class="op">=</span> array(xml_vocab[<span class="dv">0</span>])[some_xml_idxs]</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>corres_brain_idxs <span class="op">=</span> L(<span class="bu">map</span>(toks_xml2brain.get, some_xml_idxs))</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>corres_brain_toks <span class="op">=</span> array(toks)[corres_brain_idxs]</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> all_equal(some_xml_toks, corres_brain_toks)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="57376" class="" max="57376" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [57376/57376 00:19&lt;00:00]
+    </div>
+    
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>lbs_xml2brain, lbs_notfnd <span class="op">=</span> _xml2brain(xml_vocab[<span class="dv">1</span>], brain_vocab[<span class="dv">1</span>])</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>lbs_found <span class="op">=</span> <span class="bu">set</span>(lbs_xml2brain).difference(<span class="bu">set</span>(lbs_notfnd))</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>some_xml_idxs <span class="op">=</span> np.random.choice(array(L(lbs_found)), size<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>some_xml_lbs <span class="op">=</span> array(xml_vocab[<span class="dv">1</span>])[some_xml_idxs]</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>corres_brain_idxs <span class="op">=</span> L(<span class="bu">map</span>(lbs_xml2brain.get, some_xml_idxs))</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>corres_brain_lbs <span class="op">=</span> array(lbs)[corres_brain_idxs]</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> all_equal(some_xml_lbs, corres_brain_lbs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="8922" class="" max="8922" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [8922/8922 00:00&lt;00:00]
+    </div>
+    
+</div>
+</div>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/text/learner.py#L63" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="brainsplant" class="level3">
+<h3 class="anchored" data-anchor-id="brainsplant">brainsplant</h3>
+<blockquote class="blockquote">
+<pre><code> brainsplant (xml_vocab, brain_vocab, brain, brain_bias, device=None)</code></pre>
+</blockquote>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>xml_brain, xml_lbsbias, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain <span class="op">=</span> brainsplant(xml_vocab, brain_vocab, brain, brain_bias)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>test_eq(xml_brain.shape, xml_vocab.<span class="bu">map</span>(<span class="bu">len</span>))</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>test_eq(xml_brain[toks_notfnd], xml_brain.new_zeros(<span class="bu">len</span>(toks_notfnd), <span class="bu">len</span>(xml_vocab[<span class="dv">1</span>])))</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> all_equal(array(xml_vocab[<span class="dv">0</span>])[toks_map.itemgot(<span class="dv">0</span>)], array(brain_vocab[<span class="dv">0</span>])[toks_map.itemgot(<span class="dv">1</span>)])</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> all_equal(array(xml_vocab[<span class="dv">1</span>])[lbs_map.itemgot(<span class="dv">0</span>)], array(brain_vocab[<span class="dv">1</span>])[lbs_map.itemgot(<span class="dv">1</span>)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># tests to ensure `brainsplant` was successful </span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>lbl <span class="op">=</span> <span class="st">'642.41'</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>lbl <span class="op">=</span> <span class="st">'38.93'</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>lbl <span class="op">=</span> <span class="st">'51.10'</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>lbl <span class="op">=</span> <span class="st">'996.87'</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>lbl_idx_from_brn <span class="op">=</span> brain_vocab[<span class="dv">1</span>].index(lbl)</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>tok_vals_from_brn, top_toks_from_brn<span class="op">=</span> L(brain[:, lbl_idx_from_brn].topk(k<span class="op">=</span><span class="dv">20</span>)).<span class="bu">map</span>(Self.cpu())</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>lbl_idx_from_xml <span class="op">=</span> xml_vocab[<span class="dv">1</span>].index(lbl)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>tok_vals_from_xml, top_toks_from_xml <span class="op">=</span> L(xml_brain[:, lbl_idx_from_xml].topk(k<span class="op">=</span><span class="dv">20</span>)).<span class="bu">map</span>(Self.cpu())</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>test_eq(lbs_xml2brain[lbl_idx_from_xml], lbl_idx_from_brn)</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>test_eq(tok_vals_from_brn, tok_vals_from_xml)</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>test_eq(array(brain_vocab[<span class="dv">0</span>])[top_toks_from_brn], array(xml_vocab[<span class="dv">0</span>])[top_toks_from_xml])</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>test_eq(brain_bias[lbl_idx_from_brn], xml_lbsbias[lbl_idx_from_xml])</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"For the lbl </span><span class="sc">{</span>lbl<span class="sc">}</span><span class="ss"> (</span><span class="sc">{</span>lbs_des<span class="sc">.</span>get(lbl)<span class="sc">}</span><span class="ss">), the top tokens that needs attention are:"</span>)</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>.join(L(array(xml_vocab[<span class="dv">0</span>])[top_toks_from_xml], use_list<span class="op">=</span><span class="va">True</span>).zipwith(L(tok_vals_from_xml.numpy(), use_list<span class="op">=</span><span class="va">True</span>)).<span class="bu">map</span>(<span class="bu">str</span>).<span class="bu">map</span>(<span class="kw">lambda</span> o: <span class="st">"+ "</span><span class="op">+</span>o)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>For the lbl 996.87 (Complications of transplanted intestine), the top tokens that needs attention are:
++ ('consultued', 0.25548762)
++ ('cip', 0.25548762)
++ ('parlor', 0.24661502)
++ ('transplantations', 0.18601614)
++ ('scaffoid', 0.18601614)
++ ('epineprine', 0.18601614)
++ ('culinary', 0.17232327)
++ ('coordinates', 0.1469037)
++ ('aminotransferases', 0.12153866)
++ ('hydronephroureter', 0.12153866)
++ ('27yom', 0.12153866)
++ ('27y', 0.103684604)
++ ('hardward', 0.090407245)
++ ('leukoreduction', 0.08014185)
++ ('venting', 0.07831942)
++ ('secrete', 0.07196123)
++ ('orthogonal', 0.07196123)
++ ('naac', 0.06891022)
++ ('mgso4', 0.0662555)
++ ('septecemia', 0.065286644)</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'fibrillation'</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'colpo'</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'amiodarone'</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'flagyl'</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'nasalilid'</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'hemetemesis'</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>tok <span class="op">=</span> <span class="st">'restitched'</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>tok_idx_from_brn <span class="op">=</span> brain_vocab[<span class="dv">0</span>].index(tok)</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>lbs_vals_from_brn, top_lbs_from_brn <span class="op">=</span> L(brain[tok_idx_from_brn].topk(k<span class="op">=</span><span class="dv">20</span>)).<span class="bu">map</span>(Self.cpu())</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>tok_idx_from_xml <span class="op">=</span> xml_vocab[<span class="dv">0</span>].index(tok)</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>test_eq(tok_idx_from_brn, toks_xml2brain[tok_idx_from_xml])</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>lbs_vals_from_xml, top_lbs_from_xml <span class="op">=</span> L(xml_brain[tok_idx_from_xml].topk(k<span class="op">=</span><span class="dv">20</span>)).<span class="bu">map</span>(Self.cpu())</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>test_eq(lbs_vals_from_brn, lbs_vals_from_xml)</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span>: </span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>    test_eq(array(brain_vocab[<span class="dv">1</span>])[top_lbs_from_brn], array(xml_vocab[<span class="dv">1</span>])[top_lbs_from_xml])</span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a><span class="cf">except</span> <span class="pp">AssertionError</span> <span class="im">as</span> e: </span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="bu">type</span>(e).<span class="va">__name__</span>, <span class="st">"due to instability in sorting (nothing to worry!)"</span>)<span class="op">;</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>    test_shuffled(array(brain_vocab[<span class="dv">1</span>])[top_lbs_from_brn], array(xml_vocab[<span class="dv">1</span>])[top_lbs_from_xml])</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">''</span>)</span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"For the token </span><span class="sc">{</span>tok<span class="sc">}</span><span class="ss">, the top labels that needs attention are:"</span>)</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>.join(L(mapt(lbs_des.get, array(xml_vocab[<span class="dv">1</span>])[top_lbs_from_xml])).zipwith(L(lbs_vals_from_xml.numpy(), use_list<span class="op">=</span><span class="va">True</span>)).<span class="bu">map</span>(<span class="bu">str</span>).<span class="bu">map</span>(<span class="kw">lambda</span> o: <span class="st">"+ "</span><span class="op">+</span>o)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+For the token restitched, the top labels that needs attention are:
++ ('Other operations on supporting structures of uterus', 0.29102018)
++ ('Other proctopexy', 0.29102018)
++ ('Other operations on cul-de-sac', 0.18601614)
++ (None, 0.07494824)
++ ('Intervertebral disc disorder with myelopathy, thoracic region', 0.055331517)
++ ('Excision of scapula, clavicle, and thorax [ribs and sternum] for graft', 0.04382947)
++ ('Other repair of omentum', 0.028067086)
++ ('Chronic lymphocytic thyroiditis', 0.01986737)
++ (None, 0.019236181)
++ ('Reclosure of postoperative disruption of abdominal wall', 0.016585195)
++ ('Other disorders of calcium metabolism', 0.009393147)
++ ('Pain in joint involving pelvic region and thigh', 0.008421187)
++ ('Exteriorization of small intestine', 0.00817792)
++ ('Fusion or refusion of 9 or more vertebrae', 0.00762466)
++ ('Kyphosis (acquired) (postural)', 0.0074228523)
++ ('Unspecified procedure as the cause of abnormal reaction of patient, or of later complication, without mention of misadventure at time of procedure', 0.0063889036)
++ ('Application or administration of adhesion barrier substance', 0.00610513)
++ ('Acute osteomyelitis involving other specified sites', 0.0054434645)
++ ('Body Mass Index less than 19, adult', 0.004719585)
++ ('Dorsal and dorsolumbar fusion, anterior technique', 0.0046444684)</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>some_toks <span class="op">=</span> random.sample(toks_map.itemgot(<span class="dv">0</span>), <span class="dv">10</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>counts <span class="op">=</span> [c<span class="op">*</span><span class="dv">6</span> <span class="cf">for</span> c <span class="kw">in</span> random.sample(<span class="bu">range</span>(<span class="dv">10</span>), <span class="dv">10</span>)]</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>some_toks <span class="op">=</span> random.sample(some_toks, <span class="dv">20</span>, counts<span class="op">=</span>counts)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Counter(some_toks)</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>cors_toks_brn <span class="op">=</span> L(mapt(toks_xml2brain.get, some_toks))</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>test_eq(array(brain_vocab[<span class="dv">0</span>])[cors_toks_brn], array(xml_vocab[<span class="dv">0</span>])[some_toks])</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"some tokens (with repetitions):</span><span class="ch">\n</span><span class="st">"</span>,<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>.join([<span class="st">'-'</span><span class="op">+</span>xml_vocab[<span class="dv">0</span>][t]<span class="cf">for</span> t <span class="kw">in</span> some_toks]))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>some tokens (with repetitions):
+ -disorientated
+-disorientated
+-dmh
+-ibp
+-literacy
+-abruptly
+-faxed
+-delsym
+-literacy
+-delsym
+-literacy
+-ibp
+-literacy
+-delsym
+-abruptly
+-caox3
+-caox3
+-caox3
+-caox3
+-literacy</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>attn <span class="op">=</span> xml_brain[some_toks]</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>test_eq(attn.shape, (<span class="bu">len</span>(some_toks), xml_brain.shape[<span class="dv">1</span>]))</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co"># semantics of attn</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co"># for each token we can compute the attention each label deserves by pulling out all the columns for a label</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> t, a <span class="kw">in</span> <span class="bu">zip</span>(some_toks,attn):</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    test_eq(xml_brain[t], a)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co"># for each label we can compute the attention those tokens deserve by pulling out all rows for a label</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> lbl <span class="kw">in</span> <span class="bu">range</span>(xml_brain.shape[<span class="dv">1</span>]):</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>    test_eq(xml_brain[:, lbl][some_toks], attn[:, lbl])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>pd.DataFrame([(xml_vocab[<span class="dv">0</span>][t], l<span class="op">:=</span>xml_vocab[<span class="dv">1</span>][lbl_idx], val.item(), lbs_des.get(l, <span class="st">'NF'</span>)) <span class="cf">for</span> t,lbl_idx,val <span class="kw">in</span> <span class="bu">zip</span>(some_toks,attn.<span class="bu">max</span>(dim<span class="op">=</span><span class="dv">1</span>).indices.cpu(), attn.<span class="bu">max</span>(dim<span class="op">=</span><span class="dv">1</span>).values.cpu())],</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>            columns<span class="op">=</span>[<span class="st">'token'</span>, <span class="st">'most_relevant_lbl'</span>, <span class="st">'lbl_attn'</span>, <span class="st">'description'</span>]).sort_values(by<span class="op">=</span><span class="st">'lbl_attn'</span>, ascending<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">token</th>
+<th data-quarto-table-cell-role="th">most_relevant_lbl</th>
+<th data-quarto-table-cell-role="th">lbl_attn</th>
+<th data-quarto-table-cell-role="th">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">7</td>
+<td>delsym</td>
+<td>344.2</td>
+<td>0.096369</td>
+<td>Diplegia of upper limbs</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13</td>
+<td>delsym</td>
+<td>344.2</td>
+<td>0.096369</td>
+<td>Diplegia of upper limbs</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">9</td>
+<td>delsym</td>
+<td>344.2</td>
+<td>0.096369</td>
+<td>Diplegia of upper limbs</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">2</td>
+<td>dmh</td>
+<td>983.1</td>
+<td>0.041843</td>
+<td>Toxic effect of acids</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>disorientated</td>
+<td>171.0</td>
+<td>0.036627</td>
+<td>Malignant neoplasm of connective and other soft tissue of head, face, and neck</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>disorientated</td>
+<td>171.0</td>
+<td>0.036627</td>
+<td>Malignant neoplasm of connective and other soft tissue of head, face, and neck</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">18</td>
+<td>caox3</td>
+<td>375.01</td>
+<td>0.028963</td>
+<td>Acute dacryoadenitis</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">17</td>
+<td>caox3</td>
+<td>375.01</td>
+<td>0.028963</td>
+<td>Acute dacryoadenitis</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">16</td>
+<td>caox3</td>
+<td>375.01</td>
+<td>0.028963</td>
+<td>Acute dacryoadenitis</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">15</td>
+<td>caox3</td>
+<td>375.01</td>
+<td>0.028963</td>
+<td>Acute dacryoadenitis</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">12</td>
+<td>literacy</td>
+<td>449</td>
+<td>0.018083</td>
+<td>Septic arterial embolism</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10</td>
+<td>literacy</td>
+<td>449</td>
+<td>0.018083</td>
+<td>Septic arterial embolism</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>literacy</td>
+<td>449</td>
+<td>0.018083</td>
+<td>Septic arterial embolism</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">4</td>
+<td>literacy</td>
+<td>449</td>
+<td>0.018083</td>
+<td>Septic arterial embolism</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">19</td>
+<td>literacy</td>
+<td>449</td>
+<td>0.018083</td>
+<td>Septic arterial embolism</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">6</td>
+<td>faxed</td>
+<td>15.9</td>
+<td>0.012289</td>
+<td>Other operations on extraocular muscles and tendons</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11</td>
+<td>ibp</td>
+<td>39.90</td>
+<td>0.006865</td>
+<td>Insertion of non-drug-eluting peripheral vessel stent(s)</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>ibp</td>
+<td>39.90</td>
+<td>0.006865</td>
+<td>Insertion of non-drug-eluting peripheral vessel stent(s)</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">14</td>
+<td>abruptly</td>
+<td>315.8</td>
+<td>0.006252</td>
+<td>Other specified delays in development</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>abruptly</td>
+<td>315.8</td>
+<td>0.006252</td>
+<td>Other specified delays in development</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> xcube.layers <span class="im">import</span> inattention</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># define label inattention cutoff</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>k <span class="op">=</span> <span class="dv">5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>top_lbs_attn <span class="op">=</span> attn.clone().unsqueeze(<span class="dv">0</span>).permute(<span class="dv">0</span>,<span class="dv">2</span>,<span class="dv">1</span>).inattention(k<span class="op">=</span>k).permute(<span class="dv">0</span>,<span class="dv">2</span>,<span class="dv">1</span>).squeeze(<span class="dv">0</span>).contiguous() <span class="co"># applying `inattention` across the lbs dim</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>test_eq(top_lbs_attn.shape, (<span class="bu">len</span>(some_toks), xml_brain.shape[<span class="dv">1</span>]))</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>test_ne(attn, top_lbs_attn)</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>test_eq(top_lbs_attn.argmax(dim<span class="op">=</span><span class="dv">1</span>), attn.argmax(dim<span class="op">=</span><span class="dv">1</span>))</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>lbs_cf <span class="op">=</span> top_lbs_attn.<span class="bu">sum</span>(dim<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>test_eq(lbs_cf.shape, [top_lbs_attn.shape[<span class="dv">1</span>]])</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>idxs <span class="op">=</span> lbs_cf.nonzero().flatten().cpu()</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"After looking at the tokens </span><span class="sc">{</span>[xml_vocab[<span class="dv">0</span>][t]<span class="cf">for</span> t <span class="kw">in</span> some_toks]<span class="sc">}</span><span class="ss">, I am confident about the following labels:"</span>)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>pd.DataFrame([(l<span class="op">:=</span>xml_vocab[<span class="dv">1</span>][idx], val.item(), lbs_des.get(l, <span class="st">'NF'</span>)) <span class="cf">for</span> idx,val <span class="kw">in</span> <span class="bu">zip</span>(idxs,lbs_cf[idxs])],</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>            columns<span class="op">=</span>[<span class="st">'lbl'</span>, <span class="st">'lbl_cf'</span>, <span class="st">'description'</span>]).sort_values(by<span class="op">=</span><span class="st">'lbl_cf'</span>, ascending<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>After looking at the tokens ['disorientated', 'disorientated', 'dmh', 'ibp', 'literacy', 'abruptly', 'faxed', 'delsym', 'literacy', 'delsym', 'literacy', 'ibp', 'literacy', 'delsym', 'abruptly', 'caox3', 'caox3', 'caox3', 'caox3', 'literacy'], I am confident about the following labels:</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">lbl</th>
+<th data-quarto-table-cell-role="th">lbl_cf</th>
+<th data-quarto-table-cell-role="th">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10</td>
+<td>344.2</td>
+<td>0.289106</td>
+<td>Diplegia of upper limbs</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">22</td>
+<td>367.1</td>
+<td>0.289106</td>
+<td>Myopia</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">36</td>
+<td>706.1</td>
+<td>0.158741</td>
+<td>Other acne</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">35</td>
+<td>691.8</td>
+<td>0.145640</td>
+<td>Other atopic dermatitis and related conditions</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">21</td>
+<td>442.89</td>
+<td>0.134519</td>
+<td>Aneurysm of other specified site</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">50</td>
+<td>374.89</td>
+<td>0.115853</td>
+<td>Other disorders of eyelid</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">49</td>
+<td>375.01</td>
+<td>0.115853</td>
+<td>Acute dacryoadenitis</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">20</td>
+<td>449</td>
+<td>0.090417</td>
+<td>Septic arterial embolism</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11</td>
+<td>438.13</td>
+<td>0.087779</td>
+<td>NF</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">23</td>
+<td>423.1</td>
+<td>0.080689</td>
+<td>Adhesive pericarditis</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">13</td>
+<td>304.71</td>
+<td>0.080689</td>
+<td>Combinations of opioid type drug with any other drug dependence, continuous use</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">18</td>
+<td>315.9</td>
+<td>0.079333</td>
+<td>Unspecified delay in development</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">24</td>
+<td>171.0</td>
+<td>0.073254</td>
+<td>Malignant neoplasm of connective and other soft tissue of head, face, and neck</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">29</td>
+<td>259.9</td>
+<td>0.072001</td>
+<td>Unspecified endocrine disorder</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">28</td>
+<td>701.2</td>
+<td>0.072001</td>
+<td>Acquired acanthosis nigricans</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">44</td>
+<td>370.00</td>
+<td>0.066347</td>
+<td>Corneal ulcer, unspecified</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">34</td>
+<td>814.00</td>
+<td>0.057924</td>
+<td>Closed fracture of carpal bone, unspecified</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>E968.8</td>
+<td>0.050906</td>
+<td>Assault by other specified means</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">30</td>
+<td>722.72</td>
+<td>0.049080</td>
+<td>Intervertebral disc disorder with myelopathy, thoracic region</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">17</td>
+<td>444.21</td>
+<td>0.047748</td>
+<td>Arterial embolism and thrombosis of upper extremity</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">42</td>
+<td>618.1</td>
+<td>0.045409</td>
+<td>Uterine prolapse without mention of vaginal wall prolapse</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">45</td>
+<td>531.30</td>
+<td>0.041843</td>
+<td>Acute gastric ulcer without mention of hemorrhage or perforation, without mention of obstruction</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">41</td>
+<td>54.73</td>
+<td>0.041843</td>
+<td>Other repair of peritoneum</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">37</td>
+<td>983.1</td>
+<td>0.041843</td>
+<td>Toxic effect of acids</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">52</td>
+<td>824.7</td>
+<td>0.041843</td>
+<td>Trimalleolar fracture, open</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">6</td>
+<td>921.0</td>
+<td>0.039063</td>
+<td>Black eye, NOS</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">39</td>
+<td>959.9</td>
+<td>0.036281</td>
+<td>Other and unspecified injury to unspecified site</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">16</td>
+<td>290.3</td>
+<td>0.032885</td>
+<td>Senile dementia with delirium</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">43</td>
+<td>784.92</td>
+<td>0.032388</td>
+<td>NF</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">15</td>
+<td>444.89</td>
+<td>0.028912</td>
+<td>Embolism and thrombosis of other artery</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">32</td>
+<td>39.90</td>
+<td>0.013729</td>
+<td>Insertion of non-drug-eluting peripheral vessel stent(s)</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">19</td>
+<td>315.8</td>
+<td>0.012504</td>
+<td>Other specified delays in development</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>15.9</td>
+<td>0.012289</td>
+<td>Other operations on extraocular muscles and tendons</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">14</td>
+<td>38.12</td>
+<td>0.011341</td>
+<td>Endarterectomy of other vessels of head and neck</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">9</td>
+<td>68.16</td>
+<td>0.010278</td>
+<td>Closed biopsy of uterus</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">46</td>
+<td>674.14</td>
+<td>0.009737</td>
+<td>Disruption of cesarean wound, postpartum</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">47</td>
+<td>654.44</td>
+<td>0.009737</td>
+<td>Other abnormalities in shape or position of gravid uterus and of neighboring structures, postpartum</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">48</td>
+<td>669.44</td>
+<td>0.009737</td>
+<td>Other complications of obstetrical surgery and procedures, postpartum condition or complication</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">51</td>
+<td>205.90</td>
+<td>0.009737</td>
+<td>Unspecified myeloid leukemia without mention of remission</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">27</td>
+<td>86.19</td>
+<td>0.009737</td>
+<td>Other diagnostic procedures on skin and subcutaneous tissue</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">53</td>
+<td>021.8</td>
+<td>0.009737</td>
+<td>Other specified tularemia</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">40</td>
+<td>362.07</td>
+<td>0.009737</td>
+<td>Diabetic macular edema</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">38</td>
+<td>989.3</td>
+<td>0.009737</td>
+<td>Toxic effect of organophosphate and carbamate</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">26</td>
+<td>17.7</td>
+<td>0.009737</td>
+<td>NF</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">25</td>
+<td>706.9</td>
+<td>0.009737</td>
+<td>Unspecified disease of sebaceous glands</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">31</td>
+<td>39.50</td>
+<td>0.009523</td>
+<td>Angioplasty or atherectomy of other non-coronary vessel(s)</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">5</td>
+<td>421.0</td>
+<td>0.008755</td>
+<td>Acute and subacute bacterial endocarditis</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">0</td>
+<td>348.5</td>
+<td>0.007448</td>
+<td>Cerebral edema</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">1</td>
+<td>13.1</td>
+<td>0.006795</td>
+<td>Intracapsular extraction of lens</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">4</td>
+<td>93.0</td>
+<td>0.005886</td>
+<td>Diagnostic physical therapy</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">3</td>
+<td>21.2</td>
+<td>0.005648</td>
+<td>Diagnostic procedures on nose</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">33</td>
+<td>36.05</td>
+<td>0.005054</td>
+<td>NF</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>440.1</td>
+<td>0.004669</td>
+<td>Atherosclerosis of renal artery</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">12</td>
+<td>37.94</td>
+<td>0.004538</td>
+<td>Implantation or replacement of automatic cardioverter/defibrillator, total system [AICD]</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>l2r_wgts <span class="op">=</span> torch.load(join_path_file(<span class="st">'lin_lambdarank_full'</span>, source_l2r, ext<span class="op">=</span><span class="st">'.pth'</span>), map_location<span class="op">=</span>default_device())</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="st">'model'</span> <span class="kw">in</span> l2r_wgts: l2r_wgts <span class="op">=</span> l2r_wgts[<span class="st">'model'</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Need to match the wgts in xml and brain:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> brainsplant_diffntble(xml_vocab, brain_vocab, l2r_wgts, device<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    toks_lbs <span class="op">=</span> <span class="st">'toks lbs'</span>.split()</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    mb <span class="op">=</span> master_bar(<span class="bu">range</span>(<span class="dv">2</span>))</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> mb:</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>        <span class="bu">globals</span>().update(<span class="bu">dict</span>(<span class="bu">zip</span>((toks_lbs[i]<span class="op">+</span><span class="st">'_xml2brain'</span>, toks_lbs[i]<span class="op">+</span><span class="st">'_notfnd'</span>), (_xml2brain(xml_vocab[i], brain_vocab[i], parent_bar<span class="op">=</span>mb)))))</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>        mb.write <span class="op">=</span> <span class="ss">f"Finished Loop </span><span class="sc">{</span>i<span class="sc">}</span><span class="ss">"</span> </span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>    toks_map <span class="op">=</span> L((xml_idx, brn_idx) <span class="cf">for</span> xml_idx, brn_idx <span class="kw">in</span> toks_xml2brain.items() <span class="cf">if</span> brn_idx <span class="kw">is</span> <span class="kw">not</span> np.inf) </span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>    lbs_map <span class="op">=</span> L((xml_idx, brn_idx) <span class="cf">for</span> xml_idx, brn_idx <span class="kw">in</span> lbs_xml2brain.items() <span class="cf">if</span> brn_idx <span class="kw">is</span> <span class="kw">not</span> np.inf) </span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>    tf_xml <span class="op">=</span> torch.zeros(<span class="bu">len</span>(xml_vocab[<span class="dv">0</span>]), <span class="dv">200</span>).to(default_device() <span class="cf">if</span> device <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> device) </span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>    tb_xml <span class="op">=</span> torch.zeros(<span class="bu">len</span>(xml_vocab[<span class="dv">0</span>]), <span class="dv">1</span>).to(default_device() <span class="cf">if</span> device <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> device) </span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>    lf_xml <span class="op">=</span> torch.zeros(<span class="bu">len</span>(xml_vocab[<span class="dv">1</span>]), <span class="dv">200</span>).to(default_device() <span class="cf">if</span> device <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> device) </span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>    lb_xml <span class="op">=</span> torch.zeros(<span class="bu">len</span>(xml_vocab[<span class="dv">1</span>]), <span class="dv">1</span>).to(default_device() <span class="cf">if</span> device <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> device) </span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>    tf_l2r, tb_l2r, lf_l2r, lb_l2r <span class="op">=</span> <span class="bu">list</span>(l2r_wgts.values())</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>    tf_xml[toks_map.itemgot(<span class="dv">0</span>)] <span class="op">=</span> tf_l2r[toks_map.itemgot(<span class="dv">1</span>)].clone()</span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>    tb_xml[toks_map.itemgot(<span class="dv">0</span>)] <span class="op">=</span> tb_l2r[toks_map.itemgot(<span class="dv">1</span>)].clone()</span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>    lf_xml[lbs_map.itemgot(<span class="dv">0</span>)] <span class="op">=</span> lf_l2r[lbs_map.itemgot(<span class="dv">1</span>)].clone()</span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>    lb_xml[lbs_map.itemgot(<span class="dv">0</span>)] <span class="op">=</span> lb_l2r[lbs_map.itemgot(<span class="dv">1</span>)].clone()</span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># import pdb; pdb.set_trace()</span></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>    xml_wgts <span class="op">=</span> {k: xml_val <span class="cf">for</span> k, xml_val <span class="kw">in</span> <span class="bu">zip</span>(l2r_wgts.keys(), (tf_xml, tb_xml, lf_xml, lb_xml))}</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>    mod_dict <span class="op">=</span> nn.ModuleDict({k.split(<span class="st">'.'</span>)[<span class="dv">0</span>]: nn.Embedding(<span class="op">*</span>v.size()) <span class="cf">for</span> k,v <span class="kw">in</span> xml_wgts.items()}).to(default_device() <span class="cf">if</span> device <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> device) </span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>    mod_dict.load_state_dict(xml_wgts)</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> mod_dict, toks_map, lbs_map</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>mod_dict, toks_map, lbs_map <span class="op">=</span> brainsplant_diffntble(xml_vocab, brain_vocab, l2r_wgts)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="bu">isinstance</span>(mod_dict, nn.Module)</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> nn.Module <span class="kw">in</span> mod_dict.__class__.__mro__ </span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>test_eq(mod_dict[<span class="st">'token_factors'</span>].weight.data[toks_map.itemgot(<span class="dv">0</span>)], l2r_wgts[<span class="st">'token_factors.weight'</span>][toks_map.itemgot(<span class="dv">1</span>)])</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>test_eq(mod_dict[<span class="st">'token_bias'</span>].weight.data[toks_map.itemgot(<span class="dv">0</span>)], l2r_wgts[<span class="st">'token_bias.weight'</span>][toks_map.itemgot(<span class="dv">1</span>)])</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>test_eq(mod_dict[<span class="st">'label_factors'</span>].weight.data[lbs_map.itemgot(<span class="dv">0</span>)], l2r_wgts[<span class="st">'label_factors.weight'</span>][lbs_map.itemgot(<span class="dv">1</span>)])</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>test_eq(mod_dict[<span class="st">'label_bias'</span>].weight.data[lbs_map.itemgot(<span class="dv">0</span>)], l2r_wgts[<span class="st">'label_bias.weight'</span>][lbs_map.itemgot(<span class="dv">1</span>)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>mod_dict</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>ModuleDict(
+  (token_factors): Embedding(57376, 200)
+  (token_bias): Embedding(57376, 1)
+  (label_factors): Embedding(8922, 200)
+  (label_bias): Embedding(8922, 1)
+)</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>some_lbs <span class="op">=</span> [<span class="st">'996.87'</span>, <span class="st">'51.10'</span>, <span class="st">'38.93'</span>]</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> lbl <span class="kw">in</span> some_lbs:</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>lbl<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>lbs_des<span class="sc">.</span>get(lbl, <span class="st">'NF'</span>)<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>996.87: Complications of transplanted intestine
+51.10: Endoscopic retrograde cholangiopancreatography [ERCP]
+38.93: Venous catheterization, not elsewhere classified</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>lbs_idx <span class="op">=</span> tensor(mapt(xml_vocab[<span class="dv">1</span>].index, some_lbs)).to(default_device())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>toks_idx <span class="op">=</span> torch.randint(<span class="dv">0</span>, <span class="bu">len</span>(xml_vocab[<span class="dv">0</span>]), (<span class="dv">72</span>,)).to(default_device())</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"-"</span><span class="op">+</span><span class="st">'</span><span class="ch">\n</span><span class="st">-'</span>.join(array(xml_vocab[<span class="dv">0</span>])[toks_idx.cpu()].tolist()))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>-influx
+-latissimus
+-equinovarus
+-deteriorates
+-aap
+-mvh
+-135
+-incipient
+-rhubarb
+-nizhoni
+-trancutaneous
+-indicaton
+-subset
+-largyngeal
+-lemonade
+-debulk
+-aerations
+-l34
+-perserverates
+-trendelenberg
+-kettr
+-meningitic
+-bored
+-hashimoto
+-mountains
+-wit
+-asts
+-ellicits
+-pax
+-adb
+-alcholism
+-violinist
+-301b
+-subpopulation
+-intraorally
+-98o2
+-agreesive
+-monilla
+-jig
+-paroxysmalatrial
+-10pts
+-knees
+-conventionally
+-soonest
+-recap
+-rediscuss
+-spontanous
+-pulmary
+-repletement
+-450x12
+-symetrically
+-fdi
+-pshx
+-svco2
+-topimax
+-2100cc
+-conceal
+-nauasea
+-decontamination
+-administrator
+-fraction
+-tachyarrythmia
+-oversee
+-dabigutran
+-reiterated
+-aftetr
+-bues
+-symettric
+-powerful
+-depocyte
+-hyperextension
+-hepsc</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>apprx_brain <span class="op">=</span> mod_dict[<span class="st">'token_factors'</span>](toks_idx) <span class="op">@</span> mod_dict[<span class="st">'label_factors'</span>](lbs_idx).T <span class="op">+</span> mod_dict[<span class="st">'token_bias'</span>](toks_idx) <span class="op">+</span> mod_dict[<span class="st">'label_bias'</span>](lbs_idx).T</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>apprx_brain.shape</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>torch.Size([72, 3])</code></pre>
+</div>
+</div>
+<p>These are the tokens as ranked by the pretrained L2R model (which is essentially an approximation of the actual brain):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(array(xml_vocab[<span class="dv">0</span>])[toks_idx[apprx_brain.argsort(dim<span class="op">=</span><span class="dv">0</span>, descending<span class="op">=</span><span class="va">True</span>)].cpu()], columns<span class="op">=</span>L(<span class="bu">zip</span>(some_lbs, mapt(lbs_des.get, some_lbs))).<span class="bu">map</span>(<span class="st">': '</span>.join))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">996.87: Complications of transplanted intestine</th>
+<th data-quarto-table-cell-role="th">51.10: Endoscopic retrograde cholangiopancreatography [ERCP]</th>
+<th data-quarto-table-cell-role="th">38.93: Venous catheterization, not elsewhere classified</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>fraction</td>
+<td>wit</td>
+<td>fraction</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>knees</td>
+<td>fraction</td>
+<td>subpopulation</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>subpopulation</td>
+<td>administrator</td>
+<td>knees</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>wit</td>
+<td>subset</td>
+<td>subset</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>administrator</td>
+<td>knees</td>
+<td>pshx</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">67</td>
+<td>paroxysmalatrial</td>
+<td>mvh</td>
+<td>powerful</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">68</td>
+<td>indicaton</td>
+<td>ellicits</td>
+<td>indicaton</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">69</td>
+<td>rhubarb</td>
+<td>indicaton</td>
+<td>perserverates</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">70</td>
+<td>depocyte</td>
+<td>aftetr</td>
+<td>rhubarb</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">71</td>
+<td>aftetr</td>
+<td>conceal</td>
+<td>monilla</td>
+</tr>
+</tbody>
+</table>
+
+<p>72 rows × 3 columns</p>
+</div>
+</div>
+</div>
+<p>Just to compare: This is how an actual brain would rank those tokens:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># array(xml_vocab[0])[xml_brain[:, lbl_idx].topk(k=20, dim=0).indices.cpu()]</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(array(xml_vocab[<span class="dv">0</span>])[toks_idx[xml_brain[:, lbs_idx][toks_idx].argsort(descending<span class="op">=</span><span class="va">True</span>, dim<span class="op">=</span><span class="dv">0</span>)].cpu()], columns<span class="op">=</span>L(<span class="bu">zip</span>(some_lbs, mapt(lbs_des.get, some_lbs))).<span class="bu">map</span>(<span class="st">': '</span>.join))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">996.87: Complications of transplanted intestine</th>
+<th data-quarto-table-cell-role="th">51.10: Endoscopic retrograde cholangiopancreatography [ERCP]</th>
+<th data-quarto-table-cell-role="th">38.93: Venous catheterization, not elsewhere classified</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>fraction</td>
+<td>wit</td>
+<td>knees</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>knees</td>
+<td>administrator</td>
+<td>svco2</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>hyperextension</td>
+<td>pshx</td>
+<td>meningitic</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>meningitic</td>
+<td>hashimoto</td>
+<td>fraction</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>301b</td>
+<td>reiterated</td>
+<td>subset</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">67</td>
+<td>latissimus</td>
+<td>topimax</td>
+<td>pshx</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">68</td>
+<td>monilla</td>
+<td>conceal</td>
+<td>equinovarus</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">69</td>
+<td>dabigutran</td>
+<td>aftetr</td>
+<td>debulk</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">70</td>
+<td>trendelenberg</td>
+<td>symettric</td>
+<td>oversee</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">71</td>
+<td>deteriorates</td>
+<td>depocyte</td>
+<td>l34</td>
+</tr>
+</tbody>
+</table>
+
+<p>72 rows × 3 columns</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="base-learner-for-nlp" class="level2">
+<h2 class="anchored" data-anchor-id="base-learner-for-nlp">Base <code>Learner</code> for NLP</h2>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/text/learner.py#L79" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="load_collab_keys" class="level3">
+<h3 class="anchored" data-anchor-id="load_collab_keys">load_collab_keys</h3>
+<blockquote class="blockquote">
+<pre><code> load_collab_keys (model, wgts:dict)</code></pre>
+</blockquote>
+<p>Load only collab <code>wgts</code> (<code>i_weight</code> and <code>i_bias</code>) in <code>model</code>, keeping the rest as is</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>model</td>
+<td></td>
+<td>Model architecture</td>
+</tr>
+<tr class="even">
+<td>wgts</td>
+<td>dict</td>
+<td>Model weights</td>
+</tr>
+<tr class="odd">
+<td><strong>Returns</strong></td>
+<td><strong>tuple</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>config <span class="op">=</span> awd_lstm_clas_config.copy()</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>config.update({<span class="st">'n_hid'</span>: <span class="dv">10</span>, <span class="st">'emb_sz'</span>: <span class="dv">5</span>})</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a><span class="co"># tst = get_text_classifier(AWD_LSTM, 100, 3, config=config)</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>tst <span class="op">=</span> get_xmltext_classifier(AWD_LSTM, <span class="dv">100</span>, <span class="dv">3</span>, config<span class="op">=</span>config)</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>old_sd <span class="op">=</span> tst.state_dict().copy()</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>r <span class="op">=</span> re.<span class="bu">compile</span>(<span class="st">".*attn.*"</span>)</span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a>test_eq([key <span class="cf">for</span> key <span class="kw">in</span> old_sd <span class="cf">if</span> <span class="st">'attn'</span> <span class="kw">in</span> key], <span class="bu">list</span>(<span class="bu">filter</span>(r.match, old_sd)))</span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">"</span>.join(<span class="bu">list</span>(<span class="bu">filter</span>(r.match, old_sd))))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>1.pay_attn.lbs.weight
+1.boost_attn.lin.weight
+1.boost_attn.lin.bias</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> copy</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>old_sd <span class="op">=</span> copy.deepcopy(tst.state_dict())</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>load_collab_keys(tst, new_wgts)</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a><span class="co"># &lt;</span><span class="al">TODO</span><span class="co">: Deb&gt; fix the following tests later</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a><span class="co"># test_ne(old_sd['1.attn.lbs_weight.weight'], tst.state_dict()['1.attn.lbs_weight.weight'])</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a><span class="co"># test_eq(tst.state_dict()['1.pay_attn.lbs_weight.weight'], new_wgts['i_weight.weight'])</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a><span class="co"># test_ne(old_sd['1.attn.lbs_weight_dp.emb.weight'], tst.state_dict()['1.attn.lbs_weight_dp.emb.weight'])</span></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a><span class="co"># test_eq(tst.state_dict()['1.attn.lbs_weight_dp.emb.weight'], new_wgts['i_weight.weight'])</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>&lt;All keys matched successfully&gt;</code></pre>
+</div>
+</div>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/text/learner.py#L99" target="_blank" style="float:right; font-size:smaller">source</a></p>
+</section>
+<section id="textlearner" class="level3">
+<h3 class="anchored" data-anchor-id="textlearner">TextLearner</h3>
+<blockquote class="blockquote">
+<pre><code> TextLearner (dls:fastai.data.core.DataLoaders, model, alpha:float=2.0,
+              beta:float=1.0, moms:tuple=(0.8, 0.7, 0.8),
+              loss_func:callable|None=None,
+              opt_func:Optimizer|OptimWrapper=&lt;function Adam&gt;,
+              lr:float|slice=0.001, splitter:callable=&lt;function
+              trainable_params&gt;, cbs:Callback|MutableSequence|None=None,
+              metrics:callable|MutableSequence|None=None,
+              path:str|Path|None=None, model_dir:str|Path='models',
+              wd:float|int|None=None, wd_bn_bias:bool=False,
+              train_bn:bool=True, default_cbs:bool=True)</code></pre>
+</blockquote>
+<p>Basic class for a <code>Learner</code> in NLP.</p>
+<table class="table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 25%">
+<col style="width: 34%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dls</td>
+<td>DataLoaders</td>
+<td></td>
+<td>Text <code>DataLoaders</code></td>
+</tr>
+<tr class="even">
+<td>model</td>
+<td></td>
+<td></td>
+<td>A standard PyTorch model</td>
+</tr>
+<tr class="odd">
+<td>alpha</td>
+<td>float</td>
+<td>2.0</td>
+<td>Param for <code>RNNRegularizer</code></td>
+</tr>
+<tr class="even">
+<td>beta</td>
+<td>float</td>
+<td>1.0</td>
+<td>Param for <code>RNNRegularizer</code></td>
+</tr>
+<tr class="odd">
+<td>moms</td>
+<td>tuple</td>
+<td>(0.8, 0.7, 0.8)</td>
+<td>Momentum for <code>Cosine Annealing Scheduler</code></td>
+</tr>
+<tr class="even">
+<td>loss_func</td>
+<td>callable | None</td>
+<td>None</td>
+<td>Loss function. Defaults to <code>dls</code> loss</td>
+</tr>
+<tr class="odd">
+<td>opt_func</td>
+<td>Optimizer | OptimWrapper</td>
+<td>Adam</td>
+<td>Optimization function for training</td>
+</tr>
+<tr class="even">
+<td>lr</td>
+<td>float | slice</td>
+<td>0.001</td>
+<td>Default learning rate</td>
+</tr>
+<tr class="odd">
+<td>splitter</td>
+<td>callable</td>
+<td>trainable_params</td>
+<td>Split model into parameter groups. Defaults to one parameter group</td>
+</tr>
+<tr class="even">
+<td>cbs</td>
+<td>Callback | MutableSequence | None</td>
+<td>None</td>
+<td><code>Callback</code>s to add to <code>Learner</code></td>
+</tr>
+<tr class="odd">
+<td>metrics</td>
+<td>callable | MutableSequence | None</td>
+<td>None</td>
+<td><code>Metric</code>s to calculate on validation set</td>
+</tr>
+<tr class="even">
+<td>path</td>
+<td>str | Path | None</td>
+<td>None</td>
+<td>Parent directory to save, load, and export models. Defaults to <code>dls</code> <code>path</code></td>
+</tr>
+<tr class="odd">
+<td>model_dir</td>
+<td>str | Path</td>
+<td>models</td>
+<td>Subdirectory to save and load models</td>
+</tr>
+<tr class="even">
+<td>wd</td>
+<td>float | int | None</td>
+<td>None</td>
+<td>Default weight decay</td>
+</tr>
+<tr class="odd">
+<td>wd_bn_bias</td>
+<td>bool</td>
+<td>False</td>
+<td>Apply weight decay to normalization and bias parameters</td>
+</tr>
+<tr class="even">
+<td>train_bn</td>
+<td>bool</td>
+<td>True</td>
+<td>Train frozen normalization layers</td>
+</tr>
+<tr class="odd">
+<td>default_cbs</td>
+<td>bool</td>
+<td>True</td>
+<td>Include default <code>Callback</code>s</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/text/learner.py#L223" target="_blank" style="float:right; font-size:smaller">source</a></p>
+</section>
+<section id="lmlearner.save_decoder" class="level3">
+<h3 class="anchored" data-anchor-id="lmlearner.save_decoder">LMLearner.save_decoder</h3>
+<blockquote class="blockquote">
+<pre><code> LMLearner.save_decoder (file:str)</code></pre>
+</blockquote>
+<p>Save the decoder to <code>file</code> in the model directory</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>file</td>
+<td>str</td>
+<td>Filename for <code>Decoder</code></td>
+</tr>
+</tbody>
+</table>
+<p>Adds a <code>ModelResetter</code> and an <code>RNNRegularizer</code> with <code>alpha</code> and <code>beta</code> to the callbacks, the rest is the same as <code>Learner</code> init.</p>
+<p>This <code>Learner</code> adds functionality to the base class:</p>
+</section>
+</section>
+<section id="learner-convenience-functions" class="level2">
+<h2 class="anchored" data-anchor-id="learner-convenience-functions"><code>Learner</code> convenience functions</h2>
+<hr>
+<p><a href="https://github.com/debjyotiSRoy/xcube/blob/main/xcube/text/learner.py#L237" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="xmltext_classifier_learner" class="level3">
+<h3 class="anchored" data-anchor-id="xmltext_classifier_learner">xmltext_classifier_learner</h3>
+<blockquote class="blockquote">
+<pre><code> xmltext_classifier_learner (dls, arch, seq_len=72, config=None,
+                             backwards=False, pretrained=True,
+                             collab=False, drop_mult=0.5, n_out=None,
+                             lin_ftrs=None, ps=None, max_len=1440,
+                             y_range=None, splitter=None,
+                             running_decoder=True,
+                             loss_func:Optional[&lt;built-
+                             infunctioncallable&gt;]=None, opt_func:Union[fas
+                             tai.optimizer.Optimizer,fastai.optimizer.Opti
+                             mWrapper]=&lt;function Adam&gt;,
+                             lr:Union[float,slice]=0.001, cbs:Union[fastai
+                             .callback.core.Callback,collections.abc.Mutab
+                             leSequence,NoneType]=None,
+                             metrics:Union[&lt;built-infunctioncallable&gt;,coll
+                             ections.abc.MutableSequence,NoneType]=None,
+                             path:Union[str,pathlib.Path,NoneType]=None,
+                             model_dir:Union[str,pathlib.Path]='models',
+                             wd:Union[float,int,NoneType]=None,
+                             wd_bn_bias:bool=False, train_bn:bool=True,
+                             moms:tuple=(0.95, 0.85, 0.95),
+                             default_cbs:bool=True)</code></pre>
+</blockquote>
+<p>Create a <code>Learner</code> with a text classifier from <code>dls</code> and <code>arch</code>.</p>
+<table class="table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 25%">
+<col style="width: 34%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dls</td>
+<td>DataLoaders</td>
+<td></td>
+<td><code>DataLoaders</code> containing fastai or PyTorch <code>DataLoader</code>s</td>
+</tr>
+<tr class="even">
+<td>arch</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>seq_len</td>
+<td>int</td>
+<td>72</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>config</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>backwards</td>
+<td>bool</td>
+<td>False</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>pretrained</td>
+<td>bool</td>
+<td>True</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>collab</td>
+<td>bool</td>
+<td>False</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>drop_mult</td>
+<td>float</td>
+<td>0.5</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>n_out</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>lin_ftrs</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>ps</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>max_len</td>
+<td>int</td>
+<td>1440</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>y_range</td>
+<td>NoneType</td>
+<td>None</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>splitter</td>
+<td>callable</td>
+<td>trainable_params</td>
+<td>Split model into parameter groups. Defaults to one parameter group</td>
+</tr>
+<tr class="odd">
+<td>running_decoder</td>
+<td>bool</td>
+<td>True</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>loss_func</td>
+<td>callable | None</td>
+<td>None</td>
+<td>Loss function. Defaults to <code>dls</code> loss</td>
+</tr>
+<tr class="odd">
+<td>opt_func</td>
+<td>Optimizer | OptimWrapper</td>
+<td>Adam</td>
+<td>Optimization function for training</td>
+</tr>
+<tr class="even">
+<td>lr</td>
+<td>float | slice</td>
+<td>0.001</td>
+<td>Default learning rate</td>
+</tr>
+<tr class="odd">
+<td>cbs</td>
+<td>Callback | MutableSequence | None</td>
+<td>None</td>
+<td><code>Callback</code>s to add to <code>Learner</code></td>
+</tr>
+<tr class="even">
+<td>metrics</td>
+<td>callable | MutableSequence | None</td>
+<td>None</td>
+<td><code>Metric</code>s to calculate on validation set</td>
+</tr>
+<tr class="odd">
+<td>path</td>
+<td>str | Path | None</td>
+<td>None</td>
+<td>Parent directory to save, load, and export models. Defaults to <code>dls</code> <code>path</code></td>
+</tr>
+<tr class="even">
+<td>model_dir</td>
+<td>str | Path</td>
+<td>models</td>
+<td>Subdirectory to save and load models</td>
+</tr>
+<tr class="odd">
+<td>wd</td>
+<td>float | int | None</td>
+<td>None</td>
+<td>Default weight decay</td>
+</tr>
+<tr class="even">
+<td>wd_bn_bias</td>
+<td>bool</td>
+<td>False</td>
+<td>Apply weight decay to normalization and bias parameters</td>
+</tr>
+<tr class="odd">
+<td>train_bn</td>
+<td>bool</td>
+<td>True</td>
+<td>Train frozen normalization layers</td>
+</tr>
+<tr class="even">
+<td>moms</td>
+<td>tuple</td>
+<td>(0.95, 0.85, 0.95)</td>
+<td>Default momentum for schedulers</td>
+</tr>
+<tr class="odd">
+<td>default_cbs</td>
+<td>bool</td>
+<td>True</td>
+<td>Include default <code>Callback</code>s</td>
+</tr>
+</tbody>
+</table>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

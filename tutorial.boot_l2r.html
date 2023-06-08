@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.361">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="Bootstrapping a learning-to-rank model">
+
+<title>xcube - Boot L2R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="xcube - Boot L2R">
+<meta property="og:description" content="Bootstrapping a learning-to-rank model">
+<meta property="og:image" content="https://debjyotiSRoy.github.io/xcube/pics/info-gain.svg">
+<meta property="og:site-name" content="xcube">
+<meta name="twitter:title" content="xcube - Boot L2R">
+<meta name="twitter:description" content="Bootstrapping a learning-to-rank model">
+<meta name="twitter:image" content="https://debjyotiSRoy.github.io/xcube/pics/info-gain.svg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">xcube</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools ms-auto">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./tutorial.boot_l2r.html">Boot L2R</a></li></ol></nav>
+      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+      </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">xcube</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./utils.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">utils</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./layers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layers</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.models.core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Core XML Text Modules</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.learner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Learner for the XML Text application:</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Metrics</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./collab.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Collaborative filtering</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./data.transforms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Transformation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.models.core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Models</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.gradients.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Gradients</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.learner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Learner</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R DataLoader</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.callbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Callbacks</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./data.external.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Downloading…</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.info_gain.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Information Gain</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.boot_l2r.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Boot L2R</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./l2r.data.stat.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stat</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.train_l2r.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2R Training</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.train_mimic3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training an XML Text Classifier</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./text.callbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XML Callbacks</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorial.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Tutorials</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Boot L2R</h1>
+</div>
+
+<div>
+  <div class="description">
+    Bootstrapping a learning-to-rank model
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">!</span> [ <span class="op">-</span>e <span class="op">/</span>content ] <span class="op">&amp;&amp;</span> pip install <span class="op">-</span>Uqq xcube <span class="co"># upgrade xcube on colab</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastai.data.core <span class="im">import</span> <span class="op">*</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> xcube.l2r.<span class="bu">all</span> <span class="im">import</span> <span class="op">*</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Make sure we have that “beast”:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ic(torch.cuda.get_device_name(default_device()))<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>test_eq(torch.cuda.get_device_name(<span class="dv">0</span>), torch.cuda.get_device_name(default_device()))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>test_eq(default_device(), torch.device(<span class="dv">0</span>))</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"GPU memory = </span><span class="sc">{</span>torch<span class="sc">.</span>cuda<span class="sc">.</span>get_device_properties(default_device())<span class="sc">.</span>total_memory<span class="op">/</span><span class="dv">1024</span><span class="op">**</span><span class="dv">3</span><span class="sc">}</span><span class="ss">GB"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>ic| torch.cuda.get_device_name(default_device()): 'Quadro RTX 8000'</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>GPU memory = 44.99969482421875GB</code></pre>
+</div>
+</div>
+<p>Setting some environment variables:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># os.environ['CUDA_LAUNCH_BLOCKING'] = "1"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Setting defaults for pandas and matplotlib:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the default figure size</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>plt.rcParams[<span class="st">"figure.figsize"</span>] <span class="op">=</span> (<span class="dv">8</span>, <span class="dv">4</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Set pandas column width</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">'display.max_colwidth'</span>, <span class="va">None</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Altering some default jupyter settings:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.core.interactiveshell <span class="im">import</span> InteractiveShell</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># InteractiveShell.ast_node_interactivity = "last" # "all"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>In this tutorial we will find a needle in the haystack with mutual infomation gain:</p>
+<section id="mutual-information-computation" class="level4">
+<h4 class="anchored" data-anchor-id="mutual-information-computation">Mutual-Information Computation</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>source <span class="op">=</span> untar_xxx(XURLs.MIMIC3_L2R)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>(#11) [Path('/home/deb/.xcube/data/mimic3_l2r/info.pkl'),Path('/home/deb/.xcube/data/mimic3_l2r/code_descriptions.csv'),Path('/home/deb/.xcube/data/mimic3_l2r/mimic3-9k_tok_lbl_info.pkl'),Path('/home/deb/.xcube/data/mimic3_l2r/code_desc.pkl'),Path('/home/deb/.xcube/data/mimic3_l2r/p_TL.pkl'),Path('/home/deb/.xcube/data/mimic3_l2r/trn_val_split.pkl'),Path('/home/deb/.xcube/data/mimic3_l2r/mimic3-9k_tok.ft'),Path('/home/deb/.xcube/data/mimic3_l2r/mimic3-9k_lbl.ft'),Path('/home/deb/.xcube/data/mimic3_l2r/mimic3-9k.csv'),Path('/home/deb/.xcube/data/mimic3_l2r/scored_tokens.pth')...]</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> source<span class="op">/</span><span class="st">'mimic3-9k.csv'</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(data,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                 header<span class="op">=</span><span class="dv">0</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                 names<span class="op">=</span>[<span class="st">'subject_id'</span>, <span class="st">'hadm_id'</span>, <span class="st">'text'</span>, <span class="st">'labels'</span>, <span class="st">'length'</span>, <span class="st">'is_valid'</span>],</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                 dtype<span class="op">=</span>{<span class="st">'subject_id'</span>: <span class="bu">str</span>, <span class="st">'hadm_id'</span>: <span class="bu">str</span>, <span class="st">'text'</span>: <span class="bu">str</span>, <span class="st">'labels'</span>: <span class="bu">str</span>, <span class="st">'length'</span>: np.int64, <span class="st">'is_valid'</span>: <span class="bu">bool</span>})</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>df[[<span class="st">'text'</span>, <span class="st">'labels'</span>]] <span class="op">=</span> df[[<span class="st">'text'</span>, <span class="st">'labels'</span>]].astype(<span class="bu">str</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="bu">len</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>52726</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>df.head(<span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">subject_id</th>
+<th data-quarto-table-cell-role="th">hadm_id</th>
+<th data-quarto-table-cell-role="th">text</th>
+<th data-quarto-table-cell-role="th">labels</th>
+<th data-quarto-table-cell-role="th">length</th>
+<th data-quarto-table-cell-role="th">is_valid</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>86006</td>
+<td>111912</td>
+<td>admission date discharge date date of birth sex f service surgery allergies patient recorded as having no known allergies to drugs attending first name3 lf chief complaint 60f on coumadin was found slightly drowsy tonight then fell down stairs paramedic found her unconscious and she was intubated w o any medication head ct shows multiple iph transferred to hospital1 for further eval major surgical or invasive procedure none past medical history her medical history is significant for hypertension osteoarthritis involving bilateral knee joints with a dependence on cane for ambulation chronic...</td>
+<td>801.35;348.4;805.06;807.01;998.30;707.24;E880.9;427.31;414.01;401.9;V58.61;V43.64;707.00;E878.1;96.71</td>
+<td>230</td>
+<td>False</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>85950</td>
+<td>189769</td>
+<td>admission date discharge date service neurosurgery allergies sulfa sulfonamides attending first name3 lf chief complaint cc cc contact info major surgical or invasive procedure none history of present illness hpi 88m who lives with family had fall yesterday today had decline in mental status ems called pt was unresponsive on arrival went to osh head ct showed large r sdh pt was intubated at osh and transferred to hospital1 for further care past medical history cad s p mi in s p cabg in ventricular aneurysm at that time cath in with occluded rca unable to intervene chf reported ef 1st degre...</td>
+<td>852.25;E888.9;403.90;585.9;250.00;414.00;V45.81;96.71</td>
+<td>304</td>
+<td>False</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>88025</td>
+<td>180431</td>
+<td>admission date discharge date date of birth sex f service surgery allergies no known allergies adverse drug reactions attending first name3 lf chief complaint s p fall major surgical or invasive procedure none history of present illness 45f etoh s p fall from window at feet found ambulating and slurring speech on scene intubated en route for declining mental status in the er the patient was found to be bradycardic to the s with bp of systolic she was given atropine dilantin and was started on saline past medical history unknown social history unknown family history unknown physical exam ex...</td>
+<td>518.81;348.4;348.82;801.25;427.89;E882;V49.86;305.00;96.71;38.93</td>
+<td>359</td>
+<td>False</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>The file <code>'code_desc.pkl'</code> contains a short description for the labels.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># with open(source/'code_desc.pkl', 'rb') as f: lbs_desc = pickle.load(f)</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>lbs_desc <span class="op">=</span> load_pickle(source<span class="op">/</span><span class="st">'code_desc.pkl'</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="bu">isinstance</span>(lbs_desc, <span class="bu">dict</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>test_eq(mapt(lbs_desc.get, [<span class="st">'00.93'</span>, <span class="st">'427.31'</span>, <span class="st">'00.09'</span>]), (<span class="st">'Transplant from cadaver'</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>                                                          <span class="st">'Atrial fibrillation'</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>                                                          <span class="st">'Other therapeutic ultrasound'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Note that performing some computations in this notebook on the full dataset is going to take a lot of time. But don’t worry <a href="https://debjyotiSRoy.github.io/xcube/data.external.html#untar_xxx"><code>untar_xxx</code></a> has already downloaded everything you need. But you can still run the following cells if you want to generate everything from scratch. Preferably, run the following cells on a sampled dataset for quick iterations.</p>
+<p><strong>Run the cell below only if you want to sample from the full dataset to create a tiny dataset for the purpose of quick iterations.</strong></p>
+<p><em>Technical Point:</em> If we want to sample to perform quick iterations, we need to make sure the number of data points in the sample is a multiple of <code>bs</code>. So that we do not have to do a <code>drop_last=True</code> while creating the <code>Dataloaders</code>. This is because we are about to do some probability computations, and dropping data points is not a good idea as probabilities would not sum to 1.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>bs <span class="op">=</span> <span class="dv">8</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>cut <span class="op">=</span> <span class="bu">len</span>(df) <span class="op">-</span> <span class="bu">len</span>(df)<span class="op">%</span>bs</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df[:cut]</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="bu">len</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>52720</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>_arr <span class="op">=</span> np.arange(<span class="dv">0</span>, <span class="bu">len</span>(df), bs)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="co"># mask = (_arr &gt; 4000) &amp; (_arr &lt; 5000)</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>mask <span class="op">=</span> (_arr <span class="op">&gt;</span> <span class="dv">500</span>) <span class="op">&amp;</span> (_arr <span class="op">&lt;</span> <span class="dv">1000</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>_n <span class="op">=</span> np.random.choice(_arr[mask], <span class="dv">1</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df.sample(n<span class="op">=</span>_n, random_state<span class="op">=</span><span class="dv">89</span>, ignore_index<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="bu">len</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>744</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>df.head(<span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">subject_id</th>
+<th data-quarto-table-cell-role="th">hadm_id</th>
+<th data-quarto-table-cell-role="th">text</th>
+<th data-quarto-table-cell-role="th">labels</th>
+<th data-quarto-table-cell-role="th">length</th>
+<th data-quarto-table-cell-role="th">is_valid</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>2258</td>
+<td>139169</td>
+<td>admission date discharge date date of birth sex m service cardiothoracic surgery history of present illness the patient is a year old male with a past medical history significant for poorly controlled diabetes mellitus and hypertension as well as known coronary disease and a previous non q myocardial infarction and right coronary artery stenting in he was admitted to an outside hospital on the day prior to admission with unstable angina and found to have borderline positive troponin hypertension and st depressions in the lateral lead he was given aspirin nitrates beta blockers morphine and...</td>
+<td>414.01;998.31;411.1;599.0;412;V45.82;250.00;401.9;530.81;36.13;37.22;36.15;36.19;39.61;39.64;88.56;88.53;33.23;96.56;33.24;78.41</td>
+<td>1271</td>
+<td>False</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>41217</td>
+<td>161582</td>
+<td>admission date discharge date date of birth sex m service medicine allergies no known allergies adverse drug reactions attending first name3 lf chief complaint new diagnosis of scc of base of tongue major surgical or invasive procedure egd w biopsy history of present illness yo man with h o cad heavy smoking and new diagnosis of scc of base of tongue with lymph node involvement pt was referred to dr last name stitle ent in for a rt neck mass at that time a cm rt cervical lymph node was palpated and fiberoptic laryngoscopy showed a cm rt base of tongue mass a ct and biopsy were recommended ...</td>
+<td>141.0;507.0;196.0;293.0;519.09;786.30;286.9;427.89;790.29;276.52;414.01;338.3;280.0;272.0;412;V69.4;V15.82;V45.82;V66.7;E879.8;E932.0;31.42;25.01;42.23;43.11;96.6;38.93;99.25;38.93</td>
+<td>2743</td>
+<td>False</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>30204</td>
+<td>172114</td>
+<td>admission date discharge date date of birth sex f service medicine allergies etomidate norpace quinidine demerol penicillins lipitor attending doctor first name chief complaint cardiac tamponade s p pulmonary vein isolation major surgical or invasive procedure attempted pulmonary vein isolation pericardiocentesis history of present illness year old woman with a long history of paroxysmal atrial fibrillation refractory to mulitple pharmacologic interventions and multiple cardioversions who presents to the ccu with cardiac tamponade s p pulmonary vein isolation procedure past medical history...</td>
+<td>427.31;998.2;423.3;423.9;573.0;276.6;E878.8;37.34;37.27;37.0;37.21</td>
+<td>1764</td>
+<td>False</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p><strong><a href="https://en.wikipedia.org/wiki/Mutual_information#">Mutual Information</a></strong></p>
+<p><img alt="Pictorial representation of simple neural network" width="400" src="pics/info-gain.svg" caption="Pictorial representation of mutual information gain" id="img_mut_info"></p>
+<p>The mutual information of two jointly discrete random variables X and Y is calculated as a double sum:</p>
+<p><span class="math display">\[I(T;L) = \sum_{l \in \mathcal{L}} \sum_{t in \mathcal{T}} P_{(T,L)}(t,l) \log \Bigg(\frac{P_{(T,L)}(t,l)}{P_T(t) P_L(l)} \Bigg)\]</span></p>
+<p>where <span class="math inline">\(P_{(T,L)}\)</span> is the <a href="https://en.wikipedia.org/wiki/Joint_distribution">joint probability mass function</a> of <span class="math inline">\(T\)</span> and <span class="math inline">\(L\)</span>, and <span class="math inline">\(P_T\)</span> and <span class="math inline">\(P_L\)</span> are the <a href="https://en.wikipedia.org/wiki/Marginal_probability">marginal probability mass fucntions</a> of <span class="math inline">\(T\)</span> and <span class="math inline">\(L\)</span> respectively. To compute <span class="math inline">\(I\)</span>, the only quantity we need to compute is the joint pmf <span class="math inline">\(P_{(T,L)}\)</span>, as the marginal pmfs can be computed from the joint pmf.</p>
+<p>With regard to implementation, <span class="math inline">\(P_{(T,L)}\)</span> can be thought of as a 2x2 tensor as shown below:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>p_TL <span class="op">=</span> pd.DataFrame(<span class="dv">0</span>, columns<span class="op">=</span>[<span class="st">'t'</span>, <span class="st">'not t'</span>], index<span class="op">=</span>[<span class="st">'lbl'</span>, <span class="st">'not lbl'</span>])</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>p_TL</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">t</th>
+<th data-quarto-table-cell-role="th">not t</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">lbl</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">not lbl</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>…and we need to compute this <span class="math inline">\(P_{(T,L)}\)</span> for every token-label pair. In other words, we need to fill in the <code>joint</code> dataframe shown below. Note that each cell in <code>joint</code> dataframe can be thought of to be further subdivided into a 2x2 grid containing the corresponding <code>p_TL</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>bs, chnk_sz <span class="op">=</span> <span class="dv">8</span>, <span class="dv">200</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>info <span class="op">=</span> MutualInfoGain(df, bs<span class="op">=</span>bs, chnk_sz<span class="op">=</span>chnk_sz, lbs_desc<span class="op">=</span>source<span class="op">/</span><span class="st">'code_desc.pkl'</span>) <span class="co"># provide lbs_desc if you have it</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>dsets <span class="op">=</span> info.onehotify()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>CPU times: user 597 ms, sys: 244 ms, total: 842 ms
+Wall time: 4.21 s</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>toks, lbs <span class="op">=</span> dsets.vocab</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>L(toks), L(lbs), <span class="bu">len</span>(toks)<span class="op">*</span><span class="bu">len</span>(lbs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>((#10632) ['xxunk','xxpad','xxbos','xxeos','xxfld','xxrep','xxwrep','xxup','xxmaj','the'...],
+ (#2150) ['008.45','008.8','009.0','009.1','031.0','031.2','038.0','038.10','038.11','038.19'...],
+ 22858800)</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>joint <span class="op">=</span> pd.DataFrame(<span class="dv">0</span>, columns<span class="op">=</span><span class="bu">range</span>(<span class="bu">len</span>(lbs)), index<span class="op">=</span><span class="bu">range</span>(<span class="bu">len</span>(toks)))</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>joint.index.name <span class="op">=</span> <span class="st">'toks (T)'</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>joint.columns.name <span class="op">=</span> <span class="st">'lbs (L)'</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>joint</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th">lbs (L)</th>
+<th data-quarto-table-cell-role="th">0</th>
+<th data-quarto-table-cell-role="th">1</th>
+<th data-quarto-table-cell-role="th">2</th>
+<th data-quarto-table-cell-role="th">3</th>
+<th data-quarto-table-cell-role="th">4</th>
+<th data-quarto-table-cell-role="th">5</th>
+<th data-quarto-table-cell-role="th">6</th>
+<th data-quarto-table-cell-role="th">7</th>
+<th data-quarto-table-cell-role="th">8</th>
+<th data-quarto-table-cell-role="th">9</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">2140</th>
+<th data-quarto-table-cell-role="th">2141</th>
+<th data-quarto-table-cell-role="th">2142</th>
+<th data-quarto-table-cell-role="th">2143</th>
+<th data-quarto-table-cell-role="th">2144</th>
+<th data-quarto-table-cell-role="th">2145</th>
+<th data-quarto-table-cell-role="th">2146</th>
+<th data-quarto-table-cell-role="th">2147</th>
+<th data-quarto-table-cell-role="th">2148</th>
+<th data-quarto-table-cell-role="th">2149</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">toks (T)</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10627</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10628</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10629</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10630</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10631</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>...</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+
+<p>10632 rows × 2150 columns</p>
+</div>
+</div>
+</div>
+<p>We can perform tensorized computation if we think of <code>p_TL</code> as a 4 dim tensor of size <code>(len(toks), len(lbs), 2, 2)</code>. Next, to be able to estimate <code>p_TL</code> we just need to iterate over the dataset and for each data point and each token-label pair record the <code>p_TL</code> information in the last two dimension of the tensor <code>p_TL</code>. And, at the end divide by size of the dataset.</p>
+<p>Some more implementation details (Skip this if not iterested):</p>
+<ul>
+<li>We are going to one-hot encode the dataset (both <code>text</code> and <code>labels</code> field in the <code>df</code>). This is done by <code>onehot_dsets</code></li>
+<li>For efficieny, in reality we are not going to iterate over the dataset one by one, instead we are going to use a dataloader and perform <code>p_TL</code> computation on a mini-batch.</li>
+<li>Unless you are doing this in 2035 you probably do not have enogh GPU-RAM to fit the entire <code>p_TL</code> tensor of dimension <code>(len(toks), len(lbs), 2, 2)</code>. So we are going to split the lbs dimension into chunks. (Why the <code>lbs</code> dimension and not the <code>toks</code>? Because in XML datsets <code>toks</code> are approximately 60000, but the number of <code>lbs</code> could be really large of the order of millions.) With reagrd to implementation this would mean that instead of one dataloader we would roll with multiple dataloaders. And each dataloader would load the dataset in a way that mini-batches would contain the full one-hot encoding of the <code>text</code> field but only a certain <code>chunk</code> of the one-hot encoded <code>labels</code> field in <code>df</code>. Another way to think about this is that each datapoint, specifically the <code>labels</code> are splitted across multiple dataloaders. This way once we are done iterating over one such dataloader we would have filled a ceratin chunk of the <code>joint</code> dataframe shown above. And we would fill the entire <code>joint</code> only once we are done iterating over all the dataloaders.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>x, y <span class="op">=</span> dsets[<span class="dv">0</span>]</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>test_eq(tensor(dsets.tfms[<span class="dv">1</span>][<span class="dv">2</span>].decode(y)), torch.where(y<span class="op">==</span><span class="dv">1</span>)[<span class="dv">0</span>])</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>test_eq(tensor(dsets.tfms[<span class="dv">0</span>][<span class="op">-</span><span class="dv">1</span>].decode(x)), torch.where(x<span class="op">==</span><span class="dv">1</span>)[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">' '</span>.join(L(toks)[torch.where(x<span class="op">==</span><span class="dv">1</span>)[<span class="dv">0</span>]])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'xxunk xxbos the and to of was with a on in for mg no patient is he blood at name or discharge as day his one left last history were had right by this admission date that pain hospital an from p pt normal first has have which but medications up d chest o hours also well given status time care dr after stable course follow started please stitle disease known x continued days two service prior per showed artery m it q medical without namepattern1 glucose past cardiac post heart present unit physical aortic pulmonary i weeks transferred year md allergies edema due t pressure did surgery surgical number condition fluid b found procedure lower prn remained admitted soft hypertension further non coronary rate all placed diagnosis should bilaterally increased three sodium birth abdomen over bilateral aspirin illness social than old sex secondary however primary examination following some positive significant disposition floor take lung room moderate insulin bleeding namepattern4 extremities f upper back use count lasix regular therapy sinus intubated rhythm discharged underwent facility lungs continue job alert off felt sounds hematocrit heparin transfer anterior made distress contrast wound nausea four pulses down diabetes alcohol very extended postoperative followed white both removed diet creatinine hospital3 drip morning note do greater drainage male previous name11 stent intensive oriented worsening oral s1 sent currently catheterization site carotid bypass pattern1 through control weaned office albuterol extubated extremity incision warm controlled tolerated lesion increase amiodarone dictated plavix issues st levofloxacin strength physician patch difficulty infarction night next medquist36 repair increasing minimal dyspnea descending lesions laboratory morphine afebrile though hospital6 venous beta operative lateral outside later lopressor peripheral inferior operating incisions persistent masses denied go myocardial perfused cardiology murmurs bun diuresis went help evening colace lipitor began mellitus smoking nontender wheezing meds occasional ap drain cardiologist cardiothoracic commands wave knee intermittent sternal nondistended intra ambulating bruits rubs pump troponin system nitroglycerin despite lovenox tubes dependent instructed bronchoscopy meq ibuprofen main aggressive puffs came platelet referred palpable dilaudid obese decision heavy pacing stabilized secretions balloon jugular exertion minute neo follows seven leads wires many propofol frequency waves put electrocardiogram attempt paroxysmal begun grafting stenting little ten distention half treat diabetic depressions reflux coarse angina index orthopnea hepatosplenomegaly diameter diffusely urinalysis ready zantac afternoon poorly transdermal gastroesophageal borderline synephrine hemodynamic occurred quite lead refer mobility dominant moved encouraged codeine wire standpoint circumflex includes activities extremely coughing nocturnal unstable allergic stability uneventful toilet observation pole enteric blockers 1l drips incentive coated nicotine sternum weaning dye pericarditis inhalers inversions dobutamine kcl nexium packs burning participate serosanguinous complain lyme exercises spent noninsulin restenosis amaryl cks uncooperative spirometry urination isordil disabled rhonchorous nitrates build concurrently marginally'</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>lbs.map_ids(torch.where(y<span class="op">==</span><span class="dv">1</span>)[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>(#21) ['250.00','33.23','33.24','36.13','36.15','36.19','37.22','39.61','39.64','401.9'...]</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>dls <span class="op">=</span> info.lbs_chunked()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="bu">isinstance</span>(dls[<span class="dv">0</span>], TfmdDL)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>test_eq(<span class="bu">len</span>(dls),  np.ceil(<span class="bu">len</span>(lbs)<span class="op">/</span><span class="dv">200</span>))</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>test_eq(<span class="bu">len</span>(dls[<span class="dv">0</span>]), np.ceil(<span class="bu">len</span>(dsets)<span class="op">/</span>bs)) <span class="co"># drop_last is False</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a><span class="co"># test to prove that the labels for each data point is split across multiple dataloaders</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>lbs_0 <span class="op">=</span> torch.cat([yb[<span class="dv">0</span>] <span class="cf">for</span> dl <span class="kw">in</span> dls <span class="cf">for</span> _,yb <span class="kw">in</span> itertools.islice(dl, <span class="dv">1</span>)])</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> y.to(default_device())</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>test_eq(lbs_0, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now let’s compute the <code>joint_pmf</code> table we had seen earlier.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>p_TL <span class="op">=</span> info.joint_pmf()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="11" class="" max="11" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [11/11 00:13&lt;00:00]
+    </div>
+    
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>CPU times: user 8.73 s, sys: 2.58 s, total: 11.3 s
+Wall time: 13.6 s</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>test_eq(p_TL.shape, (info.toksize, info.lblsize, <span class="dv">2</span>, <span class="dv">2</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Technicality: <code>p_TL</code> is not really the joint pmf (yes, I lied before!) but contains all the information needed to compute the joint pmf <code>p_TxL</code> and mutual info gain <code>I_TL</code>. This computation is going to be comnputed by <code>compute</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>p_T, p_L, p_TxL, H_T, H_L, I_TL <span class="op">=</span> info.compute()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>CPU times: user 751 ms, sys: 253 ms, total: 1 s
+Wall time: 2.41 s</code></pre>
+</div>
+</div>
+<p>All this while if you have been working with the sampled dataset you can continue to do so for the rest of this notebook. But if you want a real feel of how things look, at this point you can load the pregenerated <code>p_TL</code> and <code>(p_T, p_L, p_TxL, H_T, H_L, I_TL)</code> for the full dataset which <a href="https://debjyotiSRoy.github.io/xcube/data.external.html#untar_xxx"><code>untar_xxx</code></a> downloaded:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co"># print('\n'.join(L(source.glob("**/*.pkl")).map(str)))</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="co"># or better yet</span></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a><span class="op">!</span>tree <span class="op">-</span>sh <span class="op">-</span>P <span class="st">"*.pkl"</span> {source}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>/home/deb/.xcube/data/mimic3_l2r
+├── [1.2M]  code_desc.pkl
+├── [9.5G]  info.pkl
+├── [3.8G]  mimic3-9k_tok_lbl_info.pkl
+├── [7.6G]  p_TL.pkl
+└── [7.6G]  trn_val_split.pkl
+
+0 directories, 5 files</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># %%time </span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>p_TL <span class="op">=</span> torch.load(source<span class="op">/</span><span class="st">'p_TL.pkl'</span>, map_location<span class="op">=</span>torch.device(<span class="st">'cpu'</span>))</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>p_T, p_L, p_TxL, H_T, H_L, I_TL <span class="op">=</span> torch.load(source<span class="op">/</span><span class="st">'info.pkl'</span>, map_location<span class="op">=</span>torch.device(<span class="st">'cpu'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Make sure there aren’t any of those pesky nans or negs:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_nanegs(<span class="op">*</span>args):</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> o <span class="kw">in</span> args:</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>        has_nans <span class="op">=</span> o.isnan().<span class="bu">all</span>() <span class="co"># check for nans</span></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>        has_negs <span class="op">=</span> <span class="kw">not</span> torch.where(o<span class="op">&gt;=</span><span class="dv">0</span>, <span class="va">True</span>, <span class="va">False</span>).<span class="bu">all</span>()</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> has_nans: <span class="cf">raise</span> <span class="pp">Exception</span>(<span class="ss">f"</span><span class="sc">{</span>namestr(o, <span class="bu">globals</span>())[<span class="dv">0</span>]<span class="sc">}</span><span class="ss"> has nans"</span>)</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> has_negs: <span class="cf">raise</span> <span class="pp">Exception</span>(<span class="ss">f"</span><span class="sc">{</span>namestr(o, <span class="bu">globals</span>())[<span class="dv">0</span>]<span class="sc">}</span><span class="ss"> has negs"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>test_fail(test_nanegs, args<span class="op">=</span>(p_T, p_L, p_TxL, H_T, H_L, I_TL), contains<span class="op">=</span><span class="st">'I_TL has negs'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Theoretically, Mutual-Info as defined <a href="https://en.wikipedia.org/wiki/Mutual_information">here</a> is suposed to be non-negative (can be proved by tossing in <a href="https://en.wikipedia.org/wiki/Jensen%27s_inequality">Jensen</a>). But, practically, it turns out <code>I_TL</code> has some negs because we distorted the <code>p_TL</code> and <code>p_TxL</code> with <code>eps</code> in the <code>I_TL</code> computation.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>torch.topk(I_TL.flatten(), <span class="dv">10</span>, largest<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>torch.return_types.topk(
+values=TensorMultiCategory([-1.9016e-07, -1.8314e-07, -1.8314e-07, -1.7385e-07,
+                     -1.7277e-07, -1.7277e-07, -1.6798e-07, -1.6798e-07,
+                     -1.6798e-07, -1.6767e-07]),
+indices=TensorMultiCategory([22423614,  2735913,  2731838,  1911099,  6393113,  6389159,
+                      6695355,  6695018,  6693073, 32253137]))</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>howmany <span class="op">=</span> torch.where(I_TL <span class="op">&lt;</span> <span class="dv">0</span>, <span class="va">True</span>, <span class="va">False</span>).<span class="bu">sum</span>().item()</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>negs <span class="op">=</span> torch.where(I_TL <span class="op">&lt;</span> <span class="dv">0</span>, I_TL, I_TL.new_zeros(I_TL.shape))</span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>negs.<span class="bu">sum</span>()<span class="op">/</span>howmany</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>TensorMultiCategory(-3.9054e-08)</code></pre>
+</div>
+</div>
+<p>Those negs on an avg are pretty close to zero. So we need not worry. Let’s roll!</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>test_eq(p_TL.shape, (info.toksize, info.lblsize, <span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>test_eq(p_T.shape, (info.toksize, <span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>test_eq(p_L.shape, (info.lblsize, <span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>test_eq(p_TxL.shape, (info.toksize, info.lblsize, <span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>test_eq(H_T.shape, [info.toksize])</span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>test_eq(H_L.shape, [info.lblsize])</span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>test_eq(I_TL.shape, (info.toksize, info.lblsize))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>eps <span class="op">=</span> I_TL.new_empty(<span class="dv">1</span>).fill_(<span class="fl">1e-15</span>)</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>info_lbl_entropy <span class="op">=</span> I_TL<span class="op">/</span>(H_L <span class="op">+</span> eps)</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>info_jaccard <span class="op">=</span> I_TL<span class="op">/</span>(H_T.unsqueeze(<span class="op">-</span><span class="dv">1</span>) <span class="op">+</span> H_L.unsqueeze(<span class="dv">0</span>) <span class="op">-</span> I_TL <span class="op">+</span> eps)</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="kw">not</span> info_lbl_entropy.isnan().<span class="bu">all</span>()<span class="op">;</span> <span class="cf">assert</span> <span class="kw">not</span> info_jaccard.isnan().<span class="bu">all</span>()</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>l2r_bootstrap <span class="op">=</span> {<span class="st">'toks'</span>: toks, <span class="st">'lbs'</span>: lbs, <span class="st">'mut_info_lbl_entropy'</span>: info_lbl_entropy, <span class="st">'mutual_info_jaccard'</span>: info_jaccard}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><code>l2r_bootstrap</code> for the full dataset was downloaded by <a href="https://debjyotiSRoy.github.io/xcube/data.external.html#untar_xxx"><code>untar_xxx</code></a> in <code>boot_path</code>. You can load it up in the following cell. <code>l2r_bootstrap</code> will be used to bootstrap our learning-to-rank model.</p>
+</section>
+<section id="save-those-mutual-information-gain-values" class="level4">
+<h4 class="anchored" data-anchor-id="save-those-mutual-information-gain-values">Save those Mutual Information Gain values</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="co"># l2r_bootstrap = torch.load(boot_path)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="co"># l2r_bootstrap['info_jaccard'] = l2r_bootstrap.pop('mutual_info_jaccard')</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="co"># globals().update(l2r_bootstrap)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="co"># info_jaccard.shape</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Let’s take a look at the <em>Mutual Information Gain</em> (<code>I_TL</code>) for each of the labels:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> tempfile.TemporaryDirectory() <span class="im">as</span> tmpdir:</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>    args <span class="op">=</span> (p_TL, p_T, p_L, info_jaccard, H_T, H_L)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>    kwargs <span class="op">=</span> {<span class="st">'k'</span>:<span class="dv">10</span>, <span class="st">'save_as'</span>: Path(tmpdir)<span class="op">/</span><span class="st">'mut_info_jaccard.ft'</span>}</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>    df_info <span class="op">=</span> info.show(<span class="op">*</span>args, <span class="op">**</span>kwargs)</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (Path(tmpdir)<span class="op">/</span><span class="st">'mut_info_jaccard.ft'</span>).exists()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>df_info.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">label</th>
+<th data-quarto-table-cell-role="th">freq</th>
+<th data-quarto-table-cell-role="th">prob</th>
+<th data-quarto-table-cell-role="th">entropy</th>
+<th data-quarto-table-cell-role="th">description</th>
+<th data-quarto-table-cell-role="th">top-k (token, prob, entropy, joint, info)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>008.45</td>
+<td>17</td>
+<td>0.022849</td>
+<td>0.108931</td>
+<td>Intestinal infection due to clostridium difficile</td>
+<td>[['difficile' '0.05107527' '0.20166922' '0.014784946' '0.11373689']\n ['cdiff' '0.010752688' '0.05943229' '0.005376344' '0.088108845']\n ['loosely' '0.002688172' '0.018595558' '0.002688172' '0.08804317']\n ['reformatted' '0.00672043' '0.04031744' '0.004032258' '0.08063226']\n ['colitis' '0.05913979' '0.22459403' '0.01344086' '0.07943697']\n ['flagyl' '0.17069893' '0.45699275' '0.021505376' '0.064542644']\n ['enteritis' '0.004032258' '0.026255678' '0.002688172' '0.061064955']\n ['ogt' '0.004032258' '0.026255678' '0.002688172' '0.061064955']\n ['retardation' '0.004032258' '0.026255678' '0.00...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>008.8</td>
+<td>2</td>
+<td>0.002688</td>
+<td>0.018596</td>
+<td>Intestinal infection due to other organism, not elsewhere classified</td>
+<td>[['vasotec' '0.002688172' '0.018595558' '0.001344086' '0.2120071']\n ['gastroenteritis' '0.010752688' '0.05943235' '0.002688172' '0.19164896']\n ['tachyarrhythmia' '0.004032258' '0.026255678' '0.001344086'\n '0.14864387']\n ['bumex' '0.004032258' '0.026255678' '0.001344086' '0.14864387']\n ['rta' '0.004032258' '0.026255678' '0.001344086' '0.14864387']\n ['neoral' '0.004032258' '0.026255678' '0.001344086' '0.14864387']\n ['probenecid' '0.004032258' '0.026255678' '0.001344086' '0.14864387']\n ['electronics' '0.004032258' '0.026255678' '0.001344086' '0.14864387']\n ['cauterized' '0.004032258...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>009.0</td>
+<td>1</td>
+<td>0.001344</td>
+<td>0.010230</td>
+<td>Infectious colitis, enteritis, and gastroenteritis</td>
+<td>[['presacral' '0.001344086' '0.010230334' '0.001344086' '0.9999958']\n ['vibrio' '0.001344086' '0.010230334' '0.001344086' '0.9999958']\n ['yersinia' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['ova' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['parasites' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['resucitation' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['exlap' '0.004032258' '0.026255678' '0.001344086' '0.26589572']\n ['tenting' '0.004032258' '0.026255678' '0.001344086' '0.26589572']\n ['adhesiolysis' '0.004032258' '0.026255678...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>009.1</td>
+<td>2</td>
+<td>0.002688</td>
+<td>0.018596</td>
+<td>Colitis, enteritis, and gastroenteritis of presumed infectious origin</td>
+<td>[['44yf' '0.001344086' '0.010230334' '0.001344086' '0.40896738']\n ['ischioanal' '0.001344086' '0.010230334' '0.001344086' '0.40896738']\n ['perianal' '0.001344086' '0.010230334' '0.001344086' '0.40896738']\n ['paraplegia' '0.002688172' '0.018595558' '0.001344086' '0.2120071']\n ['hunger' '0.002688172' '0.018595558' '0.001344086' '0.2120071']\n ['intrathecal' '0.002688172' '0.018595558' '0.001344086' '0.2120071']\n ['paraplegic' '0.002688172' '0.018595558' '0.001344086' '0.2120071']\n ['vicarious' '0.002688172' '0.018595558' '0.001344086' '0.2120071']\n ['spasticity' '0.002688172' '0.01859...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>031.0</td>
+<td>1</td>
+<td>0.001344</td>
+<td>0.010230</td>
+<td>Pulmonary diseases due to other mycobacteria</td>
+<td>[['gist' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['disrupted' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['77f' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['eroding' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['vaginitis' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['circumscribed' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['discern' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['inseparable' '0.002688172' '0.018595558' '0.001344086' '0.40896738']\n ['pearls' '0.002688172' '0.018595558...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="lets-look-at-those-mutual-information-gain-values" class="level4">
+<h4 class="anchored" data-anchor-id="lets-look-at-those-mutual-information-gain-values">Let’s look at those Mutual-Information Gain values:</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>mask <span class="op">=</span> (df_info.freq<span class="op">&gt;</span><span class="dv">50</span>) <span class="op">&amp;</span> (df_info.freq<span class="op">&lt;</span><span class="dv">150</span>)</span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a><span class="co"># with pd.option_context('display.max_colwidth', 100):</span></span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a><span class="co"># pd.reset_option('all')</span></span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>df_info <span class="op">=</span> df_info[mask].reset_index(drop<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a><span class="bu">len</span>(df_info)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>29</code></pre>
+</div>
+</div>
+<p>The dataframe below shows the top 10 tokens (based on the mutual-info-gain values) for labels are rare (freq between 50 and 150). Feel free to ChatGPT the label descriptions and the tokens to find out if we’re able to find the needle in a haystack.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">'display.max_colwidth'</span>, <span class="va">None</span>)</span>
+<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>df_info.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">label</th>
+<th data-quarto-table-cell-role="th">freq</th>
+<th data-quarto-table-cell-role="th">prob</th>
+<th data-quarto-table-cell-role="th">entropy</th>
+<th data-quarto-table-cell-role="th">description</th>
+<th data-quarto-table-cell-role="th">top-k (token, prob, entropy, joint, info)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>038.9</td>
+<td>52</td>
+<td>0.069892</td>
+<td>0.253361</td>
+<td>Unspecified septicemia</td>
+<td>[['pressors' '0.13037634' '0.38710147' '0.041666668' '0.079481095']\n ['expired' '0.10215054' '0.32978266' '0.034946237' '0.073719725']\n ['septic' '0.06586021' '0.24279651' '0.024193548' '0.05889168']\n ['spectrum' '0.061827958' '0.23196787' '0.021505376' '0.04939346']\n ['levophed' '0.06989247' '0.25336072' '0.022849463' '0.04748282']\n ['sepsis' '0.18548387' '0.47960785' '0.041666668' '0.04552333']\n ['tpn' '0.0483871' '0.1937385' '0.017473118' '0.04391181']\n ['lactate' '0.26478493' '0.5780026' '0.049731184' '0.041423406']\n ['rescusitated' '0.004032258' '0.026255678' '0.004032258' '0.04032902']\n ['broad' '0.07123656' '0.25682586' '0.021505376' '0.040083304']]</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>244.9</td>
+<td>71</td>
+<td>0.095430</td>
+<td>0.314924</td>
+<td>Unspecified hypothyroidism</td>
+<td>[['hypothyroidism' '0.10887097' '0.34414828' '0.083333336' '0.4098433']\n ['levothyroxine' '0.10752688' '0.34131324' '0.07392473' '0.28809547']\n ['synthroid' '0.04973118' '0.19772297' '0.033602152' '0.11988581']\n ['levoxyl' '0.018817205' '0.093399525' '0.016129032' '0.08422138']\n ['hypothyroid' '0.014784946' '0.07698107' '0.01344086' '0.07722074']\n ['mcg' '0.36021507' '0.6535418' '0.076612905' '0.047165737']\n ['88mcg' '0.005376344' '0.03345727' '0.005376344' '0.038052656']\n ['cystitis' '0.004032258' '0.026255678' '0.004032258' '0.028801844']\n ['kyphotic' '0.004032258' '0.026255678' '0.004032258' '0.028801844']\n ['cvat' '0.004032258' '0.026255678' '0.004032258' '0.028801844']]</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>250.00</td>
+<td>115</td>
+<td>0.154570</td>
+<td>0.430555</td>
+<td>type II diabetes mellitus [non-insulin dependent type] [NIDDM type] [adult-onset type] or unspecified type, not stated as uncontrolled, without mention of complication</td>
+<td>[['diabetes' '0.2876344' '0.60002' '0.1155914' '0.09059631']\n ['metformin' '0.0672043' '0.24634655' '0.045698926' '0.08375815']\n ['glyburide' '0.037634406' '0.1603519' '0.028225806' '0.063347906']\n ['dm' '0.14784946' '0.4189606' '0.06317204' '0.048482798']\n ['mellitus' '0.14919354' '0.42130768' '0.061827958' '0.044503253']\n ['noninsulin' '0.010752688' '0.05943235' '0.010752688' '0.043445654']\n ['tricor' '0.00672043' '0.04031744' '0.00672043' '0.027659079']\n ['avandia' '0.012096774' '0.06542839' '0.0094086025' '0.024442347']\n ['insulin' '0.2795699' '0.59254664' '0.08064516' '0.024319947']\n ['glipizide' '0.021505376' '0.103841364' '0.01344086' '0.024206813']]</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>272.0</td>
+<td>91</td>
+<td>0.122312</td>
+<td>0.371506</td>
+<td>Pure hypercholesterolemia</td>
+<td>[['hypercholesterolemia' '0.13978495' '0.40457296' '0.07795699'\n '0.14934917']\n ['lipitor' '0.17204301' '0.45911095' '0.049731184' '0.027298862']\n ['aspirin' '0.54569894' '0.68896455' '0.10080645' '0.022963593']\n ['crestor' '0.016129032' '0.08256498' '0.0094086025' '0.022421718']\n ['carotids' '0.02688172' '0.12372976' '0.012096774' '0.018986586']\n ['nonreactive' '0.08736559' '0.29640004' '0.0' '0.018241761']\n ['gallop' '0.010752688' '0.05943235' '0.00672043' '0.018127378']\n ['crossclamp' '0.010752688' '0.05943235' '0.00672043' '0.018127378']\n ['palate' '0.086021505' '0.29323512' '0.0' '0.018028865']\n ['mrs' '0.037634406' '0.1603519' '0.014784946' '0.01788708']]</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>272.4</td>
+<td>131</td>
+<td>0.176075</td>
+<td>0.465390</td>
+<td>Other and unspecified hyperlipidemia</td>
+<td>[['hyperlipidemia' '0.17876343' '0.46951324' '0.11155914' '0.14867449']\n ['dyslipidemia' '0.0672043' '0.24634655' '0.04032258' '0.048867557']\n ['medquist36' '0.28225806' '0.59507334' '0.004032258' '0.048413806']\n ['brief' '0.75' '0.56233513' '0.1733871' '0.045796935']\n ['invasive' '0.72983867' '0.5834192' '0.17204301' '0.045730278']\n ['major' '0.7338709' '0.5793706' '0.17204301' '0.044849273']\n ['job' '0.29435483' '0.606005' '0.00672043' '0.04331313']\n ['attending' '0.74596775' '0.56672186' '0.17204301' '0.042243805']\n ['dictated' '0.29435483' '0.606005' '0.008064516' '0.039907183']\n ['exam' '0.77956986' '0.5274518' '0.1733871' '0.03951623']]</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pd.reset_option('all')</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="co"># df_info.to_excel('jaccard.xls', index=False)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="scratchpad" class="level4">
+<h4 class="anchored" data-anchor-id="scratchpad">Scratchpad</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastai.data.transforms <span class="im">import</span> <span class="op">*</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>source <span class="op">=</span> untar_xxx(XURLs.MIMIC3_L2R)</span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>boot_path <span class="op">=</span> source<span class="op">/</span><span class="st">'mimic3-9k_tok_lbl_info.pkl'</span></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> boot_path.exists()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb63"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>l2r_bootstrap <span class="op">=</span> torch.load(boot_path)</span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a>toks, lbs, info <span class="op">=</span> mapt(l2r_bootstrap.get, [<span class="st">'toks'</span>, <span class="st">'lbs'</span>, <span class="st">'mutual_info_jaccard'</span>])</span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(toks[<span class="op">-</span><span class="dv">2</span>:]) <span class="co"># last two places has 'xxfake'</span></span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true" tabindex="-1"></a><span class="co"># toks = CategoryMap(toks, sort=False)</span></span>
+<span id="cb63-5"><a href="#cb63-5" aria-hidden="true" tabindex="-1"></a>lbs_des <span class="op">=</span> load_pickle(source<span class="op">/</span><span class="st">'code_desc.pkl'</span>)</span>
+<span id="cb63-6"><a href="#cb63-6" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="bu">isinstance</span>(lbs_des, <span class="bu">dict</span>)</span>
+<span id="cb63-7"><a href="#cb63-7" aria-hidden="true" tabindex="-1"></a>test_eq(info.shape, (<span class="bu">len</span>(toks), <span class="bu">len</span>(lbs))) <span class="co"># last two places has 'xxfake'</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>['xxfake', 'xxfake']</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb65"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>L(toks[<span class="dv">89</span>:<span class="dv">99</span>]), lbs[:<span class="dv">10</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>((#10) ['course','follow','after','disease','stitle','needed','known','capsule','refills','started'],
+ (#10) ['003.0','003.1','003.8','003.9','004.1','004.8','004.9','005.1','005.81','005.9'])</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>icd_codes <span class="op">=</span> [<span class="st">'008.45'</span>, <span class="st">'009.0'</span>, <span class="st">'244.9'</span>, <span class="st">'250.00'</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>d<span class="op">=</span> <span class="bu">dict</span>(<span class="bu">zip</span>(icd_codes, mapt(lbs_des.get, icd_codes)))</span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>df_des <span class="op">=</span> pd.DataFrame(d, index<span class="op">=</span><span class="bu">range</span>(<span class="dv">1</span>))</span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a>lbs_idxs <span class="op">=</span> lbs.map_objs(icd_codes)</span>
+<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>top_infos <span class="op">=</span> info[:, lbs_idxs].topk(dim<span class="op">=</span><span class="dv">0</span>, k<span class="op">=</span><span class="dv">10</span>, largest<span class="op">=</span><span class="va">True</span>).values.cpu()</span>
+<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>top_idxs <span class="op">=</span> info[:, lbs_idxs].topk(dim<span class="op">=</span><span class="dv">0</span>, k<span class="op">=</span><span class="dv">10</span>, largest<span class="op">=</span><span class="va">True</span>).indices.cpu().<span class="bu">long</span>()</span>
+<span id="cb68-7"><a href="#cb68-7" aria-hidden="true" tabindex="-1"></a>toks <span class="op">=</span> array(toks).astype(<span class="bu">str</span>)</span>
+<span id="cb68-8"><a href="#cb68-8" aria-hidden="true" tabindex="-1"></a><span class="co"># toks.map_ids(tok_idxs[:, 0])</span></span>
+<span id="cb68-9"><a href="#cb68-9" aria-hidden="true" tabindex="-1"></a>df_toks <span class="op">=</span> pd.DataFrame(toks[top_idxs], columns<span class="op">=</span>icd_codes)</span>
+<span id="cb68-10"><a href="#cb68-10" aria-hidden="true" tabindex="-1"></a>df_infos <span class="op">=</span> pd.DataFrame(top_infos, columns<span class="op">=</span>icd_codes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>display(df_des, df_toks, df_infos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">008.45</th>
+<th data-quarto-table-cell-role="th">009.0</th>
+<th data-quarto-table-cell-role="th">244.9</th>
+<th data-quarto-table-cell-role="th">250.00</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Intestinal infection due to clostridium difficile</td>
+<td>Infectious colitis, enteritis, and gastroenteritis</td>
+<td>Unspecified hypothyroidism</td>
+<td>type II diabetes mellitus [non-insulin dependent type] [NIDDM type] [adult-onset type] or unspecified type, not stated as uncontrolled, without mention of complication</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">008.45</th>
+<th data-quarto-table-cell-role="th">009.0</th>
+<th data-quarto-table-cell-role="th">244.9</th>
+<th data-quarto-table-cell-role="th">250.00</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>difficile</td>
+<td>ileoloop</td>
+<td>hypothyroidism</td>
+<td>diabetes</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>colitis</td>
+<td>entercort</td>
+<td>levothyroxine</td>
+<td>metformin</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>diff</td>
+<td>coumidin</td>
+<td>synthroid</td>
+<td>mellitus</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>clostridium</td>
+<td>33u</td>
+<td>hypothyroid</td>
+<td>dm</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>metronidazole</td>
+<td>8x</td>
+<td>mcg</td>
+<td>insulin</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>flagyl</td>
+<td>proctocolitis</td>
+<td>levoxyl</td>
+<td>glyburide</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>toxin</td>
+<td>chux</td>
+<td>tsh</td>
+<td>glipizide</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>cdiff</td>
+<td>metronidzole</td>
+<td>t4</td>
+<td>dm2</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>megacolon</td>
+<td>bayview</td>
+<td>88mcg</td>
+<td>sliding</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>feces</td>
+<td>117bpm</td>
+<td>50mcg</td>
+<td>scale</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">008.45</th>
+<th data-quarto-table-cell-role="th">009.0</th>
+<th data-quarto-table-cell-role="th">244.9</th>
+<th data-quarto-table-cell-role="th">250.00</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0.121274</td>
+<td>0.027056</td>
+<td>0.353851</td>
+<td>0.089817</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0.097799</td>
+<td>0.027056</td>
+<td>0.319011</td>
+<td>0.085321</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0.093017</td>
+<td>0.027056</td>
+<td>0.093766</td>
+<td>0.063133</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>0.086582</td>
+<td>0.027056</td>
+<td>0.076361</td>
+<td>0.052869</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>0.064245</td>
+<td>0.023884</td>
+<td>0.063794</td>
+<td>0.043760</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>0.061297</td>
+<td>0.023884</td>
+<td>0.052179</td>
+<td>0.040929</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>0.057576</td>
+<td>0.023737</td>
+<td>0.020855</td>
+<td>0.040014</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>0.042272</td>
+<td>0.023737</td>
+<td>0.014761</td>
+<td>0.033789</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>0.032625</td>
+<td>0.023737</td>
+<td>0.013494</td>
+<td>0.030756</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>0.026234</td>
+<td>0.023737</td>
+<td>0.012336</td>
+<td>0.023395</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>vocab <span class="op">=</span> load_pickle(Path.cwd()<span class="op">/</span><span class="st">'tmp/models/mimic3-9k_clas_full_vocab.pkl'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb71"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a>toks <span class="op">=</span> L(toks, use_list<span class="op">=</span><span class="va">True</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The tokens which are there in the xml vocab but we do not have any ‘info’ on:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb72"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>not_found <span class="op">=</span> L(<span class="bu">set</span>(vocab[<span class="dv">0</span>]).difference(<span class="bu">set</span>(toks)))</span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>not_found</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>(#20) ['foi','luteinizing','dobhoof','theses','q2day','promiscuity','dissension','sharpio','mhc','remiained'...]</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb74"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>test_fail(<span class="kw">lambda</span> : toks.index(<span class="st">'unrmarkable'</span>), contains<span class="op">=</span><span class="st">'is not in list'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The tokens which we have info about but were not present in the xml vocab</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb75"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span>(toks).difference(vocab[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>set()</code></pre>
+</div>
+</div>
+<p>Thankfully, we have <code>info</code> for all the labels in the xml vocab:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb77"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true" tabindex="-1"></a>test_shuffled(vocab[<span class="dv">1</span>], lbs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we need to create a mapping between the indices of the xml vocab and the information gain vocab:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> xml2info(xml_vocab, info_vocab):</span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"Creates a mapping between the indices of the xml vocab and the information-gain vocab"</span></span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>    xml2info <span class="op">=</span> {i: info_vocab.index(o) <span class="cf">if</span> o <span class="kw">in</span> info_vocab <span class="cf">else</span> np.inf  <span class="cf">for</span> i,o <span class="kw">in</span> <span class="bu">enumerate</span>(xml_vocab)}</span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a>    xml2info_notfnd <span class="op">=</span> [o <span class="cf">for</span> o <span class="kw">in</span> xml2info <span class="cf">if</span> xml2info[o] <span class="kw">is</span> np.inf]</span>
+<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> xml2info, xml2info_notfnd</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb79"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true" tabindex="-1"></a>toks_xml2info, toks_notfnd <span class="op">=</span> xml2info(vocab[<span class="dv">0</span>], toks)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a>toks_found <span class="op">=</span> <span class="bu">set</span>(toks_xml2info).difference(<span class="bu">set</span>(toks_notfnd))</span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>test_shuffled(array(vocab[<span class="dv">0</span>])[toks_notfnd], not_found)</span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a>some_xml_idxs <span class="op">=</span> np.random.choice(array(L(toks_found)), size<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb80-4"><a href="#cb80-4" aria-hidden="true" tabindex="-1"></a>some_xml_toks <span class="op">=</span> array(vocab[<span class="dv">0</span>])[some_xml_idxs]</span>
+<span id="cb80-5"><a href="#cb80-5" aria-hidden="true" tabindex="-1"></a>corres_info_idxs <span class="op">=</span> L(<span class="bu">map</span>(toks_xml2info.get, some_xml_idxs))</span>
+<span id="cb80-6"><a href="#cb80-6" aria-hidden="true" tabindex="-1"></a>corres_info_toks <span class="op">=</span> array(toks)[corres_info_idxs]</span>
+<span id="cb80-7"><a href="#cb80-7" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> all_equal(some_xml_toks, corres_info_toks)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb81"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a>lbs_xml2info, lbs_notfnd <span class="op">=</span> xml2info(L(vocab[<span class="dv">1</span>]), L(lbs))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb82"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a>lbs_found <span class="op">=</span> <span class="bu">set</span>(lbs_xml2info).difference(<span class="bu">set</span>(lbs_notfnd))</span>
+<span id="cb82-2"><a href="#cb82-2" aria-hidden="true" tabindex="-1"></a>some_xml_idxs <span class="op">=</span> np.random.choice(array(L(lbs_found)), size<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb82-3"><a href="#cb82-3" aria-hidden="true" tabindex="-1"></a>some_xml_lbs <span class="op">=</span> array(vocab[<span class="dv">1</span>])[some_xml_idxs]</span>
+<span id="cb82-4"><a href="#cb82-4" aria-hidden="true" tabindex="-1"></a>corres_info_idxs <span class="op">=</span> L(<span class="bu">map</span>(lbs_xml2info.get, some_xml_idxs))</span>
+<span id="cb82-5"><a href="#cb82-5" aria-hidden="true" tabindex="-1"></a>corres_info_lbs <span class="op">=</span> array(lbs)[corres_info_idxs]</span>
+<span id="cb82-6"><a href="#cb82-6" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> all_equal(some_xml_lbs, corres_info_lbs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/debjyotiSRoy/xcube/issues/new" class="toc-action">Report an issue</a></p></div></div></div></div></footer></body></html>

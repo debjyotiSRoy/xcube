@@ -12,8 +12,8 @@ from fastai.text.models.awdlstm import EmbeddingDropout, RNNDropout
 from .utils import *
 
 # %% auto 0
-__all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Planted_Attention',
-           'Diff_Planted_Attention', 'lincomb', 'split_sort', 'XMLAttention']
+__all__ = ['ElemWiseLin', 'LinBnFlatDrop', 'LinBnDrop', 'Embedding', 'Linear_Attention', 'Planted_Attention', 'PlantedLMDecoder',
+           'Diffntble_Planted_Attention', 'lincomb', 'split_sort', 'XMLAttention']
 
 # %% ../nbs/01_layers.ipynb 13
 def _create_bias(size, with_zeros=False):
@@ -65,7 +65,7 @@ class Embedding(nn.Embedding):
         trunc_normal_(self.weight.data, std=std)
 
 # %% ../nbs/01_layers.ipynb 26
-def _linear_attention(sentc:Tensor, # Sentence typically `(bs, bptt, nh)`
+def _linear_attention(sentc:Tensor, # Sentence typically `(bs, bptt, nh)` output of `SentenceEncoder`
                       based_on: nn.Embedding|Module # xcube's `Embedding(n_lbs, nh)` layer holding the label embeddings or a full fledged model
                   ):
     return sentc @ based_on.weight.transpose(0,1)
@@ -77,10 +77,11 @@ def _planted_attention(sentc: Tensor, # Sentence typically `(bs, bptt)` containi
     return brain[sentc.long()]
 
 # %% ../nbs/01_layers.ipynb 30
-def _diffntble_attention(inp: Tensor, # Sentence typically `(bs, bptt)` containing the vocab idxs that goes inside the encoder
-                         based_on: nn.ModuleDict # dictionary of pretrained `nn.Embedding` from l2r model
+def _diffntble_planted_attention(sentc_dec: Tensor, # Sentence `(bs, bptt)` typically containing the vocab idxs obtained after decoding what comes out of the encoder
+                         l2r: nn.ModuleDict # containing `nn.Embedding` for `token_factors`, `token_bias`, `label_factors` and `label_bias` from pretrained L2R model
                         ):
-    pass
+    
+    return l2r['token_factors'](sentc_dec.long()) @ l2r['label_factors'].weight.T + l2r['token_bias'](sentc_dec.long()) + l2r['label_bias'].weight.T
 
 # %% ../nbs/01_layers.ipynb 32
 class _Pay_Attention:
@@ -94,17 +95,32 @@ def Linear_Attention(based_on: Module): return _Pay_Attention(_linear_attention,
 def Planted_Attention(brain: Tensor): return _Pay_Attention(_planted_attention, brain)
 
 # %% ../nbs/01_layers.ipynb 37
-def Diff_Planted_Attention(based_on: Module):
-    # TODO: Deb Create an architecture same as the Learning2Rank Model here, so that we can preload it just like fastai preloads LM encoder during text classification.
-    pass
+class PlantedLMDecoder(Module):
+    def __init__(self, 
+        n_out:int, # vocab_sz 
+        n_hid:int, # Number of features in encoder last layer output
+        output_p:float=0.1, # Input dropout probability
+        plant_wgts:dict=None, # If supplied loads `plant_wgts` into decoder
+        bias:bool=True # If `False` the layer will not learn additive bias
+    ):
+        self.decoder = nn.Linear(n_hid, n_out, bias=bias)
+        self.output_dp = RNNDropout(output_p)
+        if plant_wgts: self.load_state_dict(plant_wgts)
 
-# %% ../nbs/01_layers.ipynb 38
+    def forward(self, input):
+        dp_inp = self.output_dp(input)
+        return self.decoder(dp_inp).softmax(dim=-1).argmax(dim=-1)
+
+# %% ../nbs/01_layers.ipynb 40
+def Diffntble_Planted_Attention(l2r: nn.ModuleDict): return _Pay_Attention(_diffntble_planted_attention, l2r)
+
+# %% ../nbs/01_layers.ipynb 42
 def lincomb(t, wgts=None):
     "returns the linear combination of the dim1 of a 3d tensor of `t` based on `wgts` (if `wgts` is `None` just adds the rows)"
     if wgts is None: wgts = t.new_ones(t.size(0), 1, t.size(1))
     return torch.bmm(wgts, t) # wgts@t
 
-# %% ../nbs/01_layers.ipynb 40
+# %% ../nbs/01_layers.ipynb 44
 @patch
 @torch.no_grad()
 def topkmax(self:Tensor, k=None, dim=1):
@@ -118,12 +134,12 @@ def topkmax(self:Tensor, k=None, dim=1):
     self[self < kth_largest] = 0.
     return self.softmax(dim=1)
 
-# %% ../nbs/01_layers.ipynb 41
+# %% ../nbs/01_layers.ipynb 45
 def split_sort(t, sp_dim, sort_dim, sp_sz=500, **kwargs):
     if t.ndim==1: return t.sort(dim=sort_dim, **kwargs).values
     return torch.cat([s.sort(dim=sort_dim, **kwargs).values for s in torch.split(t, split_size_or_sections=sp_sz, dim=sp_dim)], dim=sp_dim)
 
-# %% ../nbs/01_layers.ipynb 43
+# %% ../nbs/01_layers.ipynb 47
 @patch
 @torch.no_grad()
 def inattention(self:Tensor, k=None, sort_dim=0, sp_dim=0):
@@ -142,10 +158,10 @@ def inattention(self:Tensor, k=None, sort_dim=0, sp_dim=0):
     clone[clone < kth_largest] = 0.
     return clone
 
-# %% ../nbs/01_layers.ipynb 47
+# %% ../nbs/01_layers.ipynb 51
 from .utils import *
 
-# %% ../nbs/01_layers.ipynb 48
+# %% ../nbs/01_layers.ipynb 52
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
     def __init__(self, n_lbs, emb_sz, embed_p=0.0):
@@ -171,5 +187,10 @@ class XMLAttention(Module):
             top_tok_attn_wgts = attn_wgts.inattention(k=15, sort_dim=1)
             top_lbs_attn_wgts = attn_wgts.clone().permute(0,2,1).inattention(k=5, sort_dim=1).permute(0,2,1).contiguous() # applying `inattention` across the lbs dim
             lbs_cf = top_lbs_attn_wgts.sum(dim=1) #shape (bs, n_lbs)
-        else: raise NotImplementedError
+        elif self.attn.func.f is _diffntble_planted_attention: #raise NotImplementedError
+            # top_tok_attn_wgts = F.softmax(self.attn(self.lm_decoder(sentc)), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+            # top_tok_attn_wgts = F.softmax(self.attn(inp), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
+            attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0)
+            top_tok_attn_wgts = attn_wgts.inattention(k=15, sort_dim=1)
+            lbs_cf = None
         return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

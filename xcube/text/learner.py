@@ -288,10 +288,52 @@ def load_diffntble_brain(self:TextLearner,
     setattr(self.model[1].pay_attn, 'lm_decoder', lm_decoder)
     return self
 
-# %% ../../nbs/03_text.learner.ipynb 69
+# %% ../../nbs/03_text.learner.ipynb 68
+@patch
+def load_both(self:TextLearner,
+                         file_brain:str, # Filename of the bootstrap info for l2r
+                         file_bias: str, # Filename of the saved label bias
+                         file_l2r_wgts:str, # Filename of the pretrained l2r wgts
+                         file_lm_decoder_wgts:str, # Filename of the pretrained LM decoder wgts
+                         device:(int,str,torch.device)=None # # Device used to load, defaults to `default_device()`
+                        ):
+    bias_path = join_path_file(file_bias, self.path/self.model_dir, ext='.pkl')
+    brain_path = join_path_file(file_brain, self.path/self.model_dir, ext='.pkl')
+    brain_bootstrap = torch.load(brain_path, map_location=default_device() if device is None else device)
+    *brain_vocab, brain = mapt(brain_bootstrap.get, ['toks', 'lbs', 'mutual_info_jaccard'])
+    brain_vocab = L(brain_vocab).map(listify)
+    vocab = L(_get_text_vocab(self.dls), _get_label_vocab(self.dls)).map(listify)
+    brain_bias = torch.load(bias_path, map_location=default_device() if device is None else device)
+    brain_bias = brain_bias[:, :, 0].squeeze(-1)
+    print("Performing static brainsplant...")
+    self.brain, self.lbsbias, *_ = brainsplant(vocab, brain_vocab, brain, brain_bias)
+    print("Successfull!")
+    plant_attn_layer = Lambda(Planted_Attention(self.brain))
+    setattr(self.model[1].pay_attn, 'plant_attn', plant_attn_layer)
+    assert self.model[1].pay_attn.plant_attn.func.f is _planted_attention
+    
+    l2r_wgts = torch.load(join_path_file(file_l2r_wgts, self.path/self.model_dir, ext='.pth'), map_location=default_device() if device is None else device)
+    if 'model' in l2r_wgts: l2r_wgts = l2r_wgts['model']
+    print("Performing 'differentiable' brainsplant...")
+    l2r, toks_map, lbs_map = brainsplant_diffntble(vocab, brain_vocab, l2r_wgts)
+    print("Successfull!")
+    lm_decoder_pretrained_wgts = torch.load(join_path_file(file_lm_decoder_wgts, self.path/self.model_dir, ext='.pth'), map_location=default_device() if device is None else device)
+    config = awd_lstm_lm_config.copy()
+    emb_sz, output_p, out_bias = map(config.get, ['emb_sz', 'output_p', 'out_bias'])
+    lm_decoder = PlantedLMDecoder(len(vocab[0]), emb_sz, output_p=output_p*0.3, plant_wgts=lm_decoder_pretrained_wgts, bias=out_bias).to(default_device() if device is None else device)
+    test_eq(lm_decoder.decoder.weight, lm_decoder_pretrained_wgts['decoder.weight'])
+    test_eq(lm_decoder.decoder.bias, lm_decoder_pretrained_wgts['decoder.bias'])
+    plant_attn_layer = Lambda(Diffntble_Planted_Attention(l2r))
+    setattr(self.model[1].pay_attn, 'attn', plant_attn_layer)
+    assert self.model[1].pay_attn.attn.func.f is _diffntble_planted_attention
+    setattr(self.model[1].pay_attn, 'lm_decoder', lm_decoder)
+    
+    return self 
+
+# %% ../../nbs/03_text.learner.ipynb 71
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 70
+# %% ../../nbs/03_text.learner.ipynb 72
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, **kwargs):

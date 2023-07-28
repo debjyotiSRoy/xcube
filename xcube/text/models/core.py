@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['SequentialRNN', 'SentenceEncoder', 'AttentiveSentenceEncoder', 'masked_concat_pool', 'XPoolingLinearClassifier',
-           'LabelAttentionClassifier', 'get_xmltext_classifier', 'get_xmltext_classifier2']
+           'LabelAttentionClassifier', 'get_xmltext_classifier', 'awd_lstm_xclas_split', 'get_xmltext_classifier2']
 
 # %% ../../../nbs/02_text.models.core.ipynb 1
 from fastai.data.all import *
@@ -121,9 +121,9 @@ from ...utils import *
 # %% ../../../nbs/02_text.models.core.ipynb 21
 class LabelAttentionClassifier(Module):
     initrange=0.1
-    def __init__(self, n_hidden, n_lbs, y_range=None):
+    def __init__(self, n_hidden, n_lbs, plant=0.5, y_range=None):
         store_attr('n_hidden,n_lbs,y_range')
-        self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden)
+        self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden, plant=plant)
         self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
         self.label_bias = _create_bias((self.n_lbs,), with_zeros=False)
         self.hl = torch.zeros(1)
@@ -160,8 +160,18 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     model = SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)
 
+# %% ../../../nbs/02_text.models.core.ipynb 25
+def awd_lstm_xclas_split(model):
+    "Split a RNN `model` in groups for differential learning rates."
+    encoder_groups = L(nn.Sequential(model[0].module.encoder, model[0].module.encoder_dp))
+    encoder_groups += L(nn.Sequential(rnn, dp) for rnn, dp in zip(model[0].module.rnns, model[0].module.hidden_dps))
+    decoder_groups = L(model[1].pay_attn.attn.func.based_on, model[1].pay_attn.lbs, model[1].boost_attn)
+    groups = encoder_groups + decoder_groups
+    return groups.map(params)
+
 # %% ../../../nbs/02_text.models.core.ipynb 26
-def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True):
+def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True, 
+                           plant=0.5):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
     config = ifnone(config, meta['config_clas']).copy()
@@ -170,7 +180,7 @@ def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, dr
     n_hidden = config[meta['hid_name']]
     config.pop('output_p')
     init = config.pop('init') if 'init' in config else None
-    decoder = LabelAttentionClassifier(n_hidden, n_class, y_range=y_range)
+    decoder = LabelAttentionClassifier(n_hidden, n_class, plant=plant, y_range=y_range)
     encoder = AttentiveSentenceEncoder(seq_len, arch(vocab_sz, **config), decoder, pad_idx=pad_idx, max_len=max_len, running_decoder=running_decoder)
     model =  SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)

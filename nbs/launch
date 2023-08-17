@@ -1,1 +1,1 @@
-accelerate launch --mixed_precision=fp16 --num_processes=1 train.py --fp16 --workers=16 --track_train --lm --bs=32 --fname mimic3-9k_clas_full_replicate
+accelerate launch --mixed_precision=fp16 --num_processes=1 train.py --fp16 --workers=16 --track_train --lm --bs=16 --fname mimic3-9k_clas_full_replicate

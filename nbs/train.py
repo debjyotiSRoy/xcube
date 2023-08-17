@@ -82,14 +82,14 @@ def main(
 
     # import pdb; pdb.set_trace()
     for run in range(runs):
-        set_seed(1, reproducible=True)
+        set_seed(run, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {epochs}; lr: {lr}; bs: {bs}')
 
         cbs=SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=True) if save_model else None
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
                                    metrics=partial(precision_at_k, k=15), path=tmp, cbs=cbs,
                                    pretrained=False,
-                                   splitter=awd_lstm_xclas_split,
+                                   splitter=None,#awd_lstm_xclas_split,
                                    running_decoder=True,
                                    )
         if track_train: 

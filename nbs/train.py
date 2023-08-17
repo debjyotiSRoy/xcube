@@ -22,7 +22,7 @@ def splitter(df):
     valid = df.index[df['is_valid']].to_list()
     return train, valid
 
-def get_dls(source, bs, sl=16, workers=None):
+def get_dls(source, bs, sl=72, workers=None):
     workers = ifnone(workers,min(8,num_cpus()))
     data = source/'mimic3-9k.csv'
     df = pd.read_csv(data,
@@ -44,6 +44,7 @@ def get_dls(source, bs, sl=16, workers=None):
     dls_clas = dsets.dataloaders(bs=bs, seq_len=sl,
                              dl_type=dl_type,
                              before_batch=pad_input_chunk, num_workers=workers)
+    return dls_clas
 
 @call_parse
 def main(
@@ -79,7 +80,9 @@ def main(
         dls_clas = get_dls(source, bs, workers=workers)
         torch.save(dls_clas, dls_file)
 
+    # import pdb; pdb.set_trace()
     for run in range(runs):
+        set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {epochs}; lr: {lr}; bs: {bs}')
 
         cbs=SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=True) if save_model else None

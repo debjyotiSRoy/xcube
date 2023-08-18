@@ -1,1 +1,1 @@
-accelerate launch --multi_gpu --mixed_precision=fp16 --num_processes=8 train.py --fp16 --workers=16 --track_train --lm --bs=8
+accelerate launch --mixed_precision=fp16 --num_processes=1 train.py --data="mimic3-9k" --fp16 --workers=16 --track_train --lm   --bs=16  --fname="mimic3-9k_clas_full_replicate" --runs=1

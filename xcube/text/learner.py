@@ -317,26 +317,27 @@ def load_both(self:TextLearner,
     print("Performing 'differentiable' brainsplant...")
     l2r, toks_map, lbs_map = brainsplant_diffntble(vocab, brain_vocab, l2r_wgts)
     print("Successfull!")
+    plant_attn_layer = Lambda(Diffntble_Planted_Attention(l2r))
     lm_decoder_pretrained_wgts = torch.load(join_path_file(file_lm_decoder_wgts, self.path/self.model_dir, ext='.pth'), map_location=default_device() if device is None else device)
     config = awd_lstm_lm_config.copy()
     emb_sz, output_p, out_bias = map(config.get, ['emb_sz', 'output_p', 'out_bias'])
     lm_decoder = PlantedLMDecoder(len(vocab[0]), emb_sz, output_p=output_p*0.3, plant_wgts=lm_decoder_pretrained_wgts, bias=out_bias).to(default_device() if device is None else device)
     test_eq(lm_decoder.decoder.weight, lm_decoder_pretrained_wgts['decoder.weight'])
     test_eq(lm_decoder.decoder.bias, lm_decoder_pretrained_wgts['decoder.bias'])
-    plant_attn_layer = Lambda(Diffntble_Planted_Attention(l2r))
     
     lin_attn = getattr(self.model[1].pay_attn, 'attn')
     setattr(self.model[1].pay_attn, 'attn', plant_attn_layer)
+    setattr(self.model[1].pay_attn, 'l2r', l2r)
     setattr(self.model[1].pay_attn, 'lin_attn', lin_attn)
     assert self.model[1].pay_attn.attn.func.f is _diffntble_planted_attention
     setattr(self.model[1].pay_attn, 'lm_decoder', lm_decoder)
     
     return self 
 
-# %% ../../nbs/03_text.learner.ipynb 71
+# %% ../../nbs/03_text.learner.ipynb 70
 from .models.core import _model_meta 
 
-# %% ../../nbs/03_text.learner.ipynb 72
+# %% ../../nbs/03_text.learner.ipynb 71
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
                            lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, plant=0.5, **kwargs):

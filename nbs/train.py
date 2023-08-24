@@ -3,6 +3,7 @@ from fastcore.script import *
 from fastai.distributed import *
 from fastprogress import fastprogress
 from fastai.text.all import *
+import wandb; from fastai.callback.wandb import *
 from xcube.text.all import *
 from fastai.metrics import accuracy # there's an 'accuracy' metric in xcube as well
 
@@ -54,7 +55,7 @@ def main(
     epochs:Param("Number of epochs", int)=1,
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
-    plant:    Param("PLANT attention", store_true)=False,
+    plant: Param("PLANT attention", float)=0,
     dump:  Param("Print model; don't train", int)=0,
     runs:  Param("Number of times to repeat training", int)=1,
     track_train: Param("Record training metrics", store_true)=False,
@@ -89,13 +90,16 @@ def main(
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {epochs}; lr: {lr}; bs: {bs}')
 
-        cbs = L(SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=True)) if save_model else None
-        if log: cbs += L(CSVLogger(fname='history_with_running.csv'))
+        cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=True) if save_model else None
+        # if log: cbs += L(CSVLogger(fname='history_with_running_top50_noplant.csv'))
+        # if log: cbs += L(CSVLogger(fname='history.csv'))
+        cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
                                    metrics=partial(precision_at_k, k=15), path=tmp, cbs=cbs,
                                    pretrained=False,
                                    splitter=None,#awd_lstm_xclas_split,
                                    running_decoder=True,
+                                   plant=plant
                                    )
         if track_train: 
             assert learn.cbs[1].__class__ is Recorder
@@ -106,14 +110,17 @@ def main(
         if lm: learn = rank0_first(learn.load_encoder, 'mimic3-9k_lm_finetuned')
         if plant: 
             learn = rank0_first(learn.load_both, 'mimic3-9k_tok_lbl_info', 'p_L', 'lin_lambdarank_full', 'mimic3-9k_lm_decoder')
+            setattr(learn, 'splitter', awd_lstm_xclas_split)
             learn.create_opt()
-            import pdb; pdb.set_trace()
-
 
         # Workaround: In PyTorch 2.0.1 need to set DistributedDataParallel() with find_unused_parameters=True,
         # to avoid a crash that only happens in distributed mode of xmltext_clasifier_learner.fit()
         ddp_scaler = DistributedDataParallelKwargs(bucket_cap_mb=15, find_unused_parameters=True)
-        with learn.distrib_ctx(kwargs_handlers=[ddp_scaler]): # distributed traing requires "accelerate launch train.py --help"
+        wandb.init()
+        with (wandb.init(), learn.distrib_ctx(kwargs_handlers=[ddp_scaler])): # distributed traing requires "accelerate launch train.py --help"
             # learn.unfreeze()
-            learn.fit(1, 3e-3)
+            #learn.freeze_to(-2)
+            #learn.fit(11, lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 7e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+            learn.fit(3, lr=3e-2)
+            # import pdb; pdb.set_trace()
 

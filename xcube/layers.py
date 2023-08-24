@@ -190,7 +190,12 @@ class XMLAttention(Module):
             # top_tok_attn_wgts = F.softmax(self.attn(self.lm_decoder(sentc)), dim=1).masked_fill(mask[:,:,None], 0).inattention(k=15, sort_dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
             # top_tok_attn_wgts0 = self.plant_attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=15, sort_dim=1)
             top_tok_lin_attn_wgts = self.lin_attn(sentc).softmax(dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
-            top_tok_plant_attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=30, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            
+            # change
+            top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=30, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            # top_tok_plant_attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=30, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            # change
+
             top_tok_attn_wgts = (1-self.plant)*top_tok_lin_attn_wgts + self.plant*top_tok_plant_attn_wgts
             # top_tok_attn_wgts = F.softmax(self.attn(inp), dim=1).masked_fill(mask[:,:,None], 0).inattention(k=15, sort_dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
             # attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0)

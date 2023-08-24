@@ -1,12 +1,13 @@
 accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     train.py \
-                                    --data="mimic3-9k" \
+                                    --data="mimic3-9k_top50" \
                                     --fp16 \
                                     --workers=16 \
                                     --track_train \
                                     --log \
-                                    --lm  \
-                                    --bs=16  \
-                                    --fname="mimic3-9k_clas_full_replicate" \
+                                    --lm \
+                                    --bs=16 \
+                                    --save_model \
+                                    --fname="mimic3-9k_clas_top50_noplant" \
                                     --runs=1 \
-                                    --plant=0.3
+                                    --plant=0.0

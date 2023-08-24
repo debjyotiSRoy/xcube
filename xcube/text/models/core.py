@@ -161,15 +161,18 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     return model if init is None else model.apply(init)
 
 # %% ../../../nbs/02_text.models.core.ipynb 25
-def awd_lstm_xclas_split(model):
-    "Split a RNN `model` in groups for differential learning rates."
-    encoder_groups = L(nn.Sequential(model[0].module.encoder, model[0].module.encoder_dp))
-    encoder_groups += L(nn.Sequential(rnn, dp) for rnn, dp in zip(model[0].module.rnns, model[0].module.hidden_dps))
-    decoder_groups = L(model[1].pay_attn.attn.func.based_on, model[1].pay_attn.lbs, model[1].boost_attn)
-    groups = encoder_groups + decoder_groups
-    return groups.map(params)
+import re
+def _get_filter_params(m, but:re.Pattern):
+    return [p for n, p in list(m.named_parameters()) if not but.match(n)]
 
 # %% ../../../nbs/02_text.models.core.ipynb 26
+def awd_lstm_xclas_split(model):
+    "Split a RNN `model` in groups for differential learning rates."
+    groups = [nn.Sequential(model[0].module.encoder, model[0].module.encoder_dp)]
+    groups += [nn.Sequential(rnn, dp) for rnn, dp in zip(model[0].module.rnns, model[0].module.hidden_dps)]
+    return L(groups).map(params) + [params(model[1].pay_attn.lm_decoder)] + [params(model[1].pay_attn.l2r)] + L(model[1]).map(partial(_get_filter_params, but=re.compile('^(pay_attn.l2r|pay_attn.lm_decoder)')))
+
+# %% ../../../nbs/02_text.models.core.ipynb 28
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True, 
                            plant=0.5):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"

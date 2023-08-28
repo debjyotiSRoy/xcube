@@ -55,10 +55,11 @@ def main(
     epochs:Param("Number of epochs", int)=1,
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
-    plant: Param("PLANT attention", float)=0,
+    plant: Param("PLANT attention", store_true)=True,
     dump:  Param("Print model; don't train", int)=0,
     runs:  Param("Number of times to repeat training", int)=1,
     track_train: Param("Record training metrics", store_true)=False,
+    wandblog: Param("Experiment tracking in wandb.ai", store_true)=False,
     log: Param("Log loss and metrics after each epoch", store_true)=False,
     workers:   Param("Number of workers", int)=None,
     save_model: Param("Save model on improvement after each epoch", store_true)=False,
@@ -90,16 +91,14 @@ def main(
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {epochs}; lr: {lr}; bs: {bs}')
 
-        cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=True) if save_model else None
-        # if log: cbs += L(CSVLogger(fname='history_with_running_top50_noplant.csv'))
-        # if log: cbs += L(CSVLogger(fname='history.csv'))
-        cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
+        cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
+        if log: cbs += L(CSVLogger(fname=fname+'.csv'))
+        if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
                                    metrics=partial(precision_at_k, k=15), path=tmp, cbs=cbs,
                                    pretrained=False,
-                                   splitter=None,#awd_lstm_xclas_split,
+                                   splitter=None,
                                    running_decoder=True,
-                                   plant=plant
                                    )
         if track_train: 
             assert learn.cbs[1].__class__ is Recorder
@@ -116,11 +115,11 @@ def main(
         # Workaround: In PyTorch 2.0.1 need to set DistributedDataParallel() with find_unused_parameters=True,
         # to avoid a crash that only happens in distributed mode of xmltext_clasifier_learner.fit()
         ddp_scaler = DistributedDataParallelKwargs(bucket_cap_mb=15, find_unused_parameters=True)
-        wandb.init()
-        with (wandb.init(), learn.distrib_ctx(kwargs_handlers=[ddp_scaler])): # distributed traing requires "accelerate launch train.py --help"
-            # learn.unfreeze()
-            #learn.freeze_to(-2)
-            #learn.fit(11, lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 7e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-            learn.fit(3, lr=3e-2)
+        cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
+        if wandblog: cms += L(wandb.init())
+        with ContextManagers(cms):
+            learn.freeze_to(-2)
+            learn.fit(10, lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 7e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+            # learn.fit(3, lr=3e-2)
             # import pdb; pdb.set_trace()
 

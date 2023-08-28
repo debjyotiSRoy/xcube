@@ -1,6 +1,6 @@
 accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     train.py \
-                                    --data="mimic3-9k_top50" \
+                                    --data="mimic3-9k_tiny" \
                                     --fp16 \
                                     --workers=16 \
                                     --track_train \
@@ -8,6 +8,6 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --lm \
                                     --bs=16 \
                                     --save_model \
-                                    --fname="mimic3-9k_clas_top50_plant" \
+                                    --fname="mimic3-9k_clas_tiny_plant" \
                                     --runs=1 \
-                                    --plant
+                                    --plant \

@@ -5,8 +5,11 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --workers=16 \
                                     --track_train \
                                     --log \
-                                    --lm  \
-                                    --bs=16  \
-                                    --fname="mimic3-9k_clas_full_replicate" \
+                                    --lm \
+                                    --bs=16 \
+                                    --save_model \
+                                    --fname="mimic3-9k_clas_full_plant" \
                                     --runs=1 \
-                                    --plant=0.3
+                                    --plant
+
+

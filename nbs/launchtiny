@@ -6,6 +6,7 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --track_train \
                                     --log \
                                     --lm \
+                                    --epochs="[1, 1, 1, 1, 1]" \
                                     --bs=16 \
                                     --save_model \
                                     --fname="mimic3-9k_clas_tiny_plant" \

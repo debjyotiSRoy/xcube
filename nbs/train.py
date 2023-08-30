@@ -52,7 +52,7 @@ def main(
     data: Param("Filename of the raw data", str)="mimic3-9k",
     lr:    Param("base Learning rate", float)=1e-2,
     bs:    Param("Batch size", int)=16,
-    epochs:Param("Number of epochs", int)=1,
+    epochs:Param("Number of epochs", str)="[10, 5, 5, 5, 10]",
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
     plant: Param("PLANT attention", store_true)=True,
@@ -87,12 +87,16 @@ def main(
         dls_clas = get_dls(source, data, bs, workers=workers)
         torch.save(dls_clas, dls_file)
 
+    epochs = json.loads(epochs)
     for run in range(runs):
         set_seed(1, reproducible=True)
-        pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {epochs}; lr: {lr}; bs: {bs}')
+        pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {sum(epochs)}; lr: {lr}; bs: {bs}')
 
         cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
-        if log: cbs += L(CSVLogger(fname=fname+'.csv'))
+        if log: 
+            logfname = join_path_file(fname, tmp, ext='.csv')
+            if logfname.exists(): logfname.unlink()
+            cbs += L(CSVLogger(fname=logfname, append=True))
         if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
                                    metrics=partial(precision_at_k, k=15), path=tmp, cbs=cbs,
@@ -118,8 +122,25 @@ def main(
         cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
         if wandblog: cms += L(wandb.init())
         with ContextManagers(cms):
-            learn.freeze_to(-2)
-            learn.fit(10, lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 7e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-            # learn.fit(3, lr=3e-2)
-            # import pdb; pdb.set_trace()
+            print("unfreezing the last layer and pretrained l2r...")
+            learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
+            learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+            print("unfreezing the LM decoder...")
+            learn.freeze_to(-3) # unfreeze the lm decoder
+            learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+            print("unfreezing one LSTM...")
+            learn.freeze_to(-4) # unfreeze one LSTM
+            learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+            print("unfreezing one more LSTM...")
+            learn.freeze_to(-5) # unfreeze one more LSTM
+            learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+            print("unfreezing the entire model...")
+            learn.unfreeze() # unfreeze the rest
+            learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6], wd=[0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])
+
+
 

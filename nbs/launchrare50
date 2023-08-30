@@ -1,0 +1,14 @@
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
+                                    train.py \
+                                    --data="mimic3-9k_rare50" \
+                                    --fp16 \
+                                    --workers=16 \
+                                    --track_train \
+                                    --log \
+                                    --lm \
+                                    --epochs="[1, 1, 1, 1, 1]" \
+                                    --bs=16 \
+                                    --save_model \
+                                    --fname="mimic3-9k_clas_rare50_plant" \
+                                    --runs=1 \
+                                    --plant

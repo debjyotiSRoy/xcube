@@ -7,6 +7,10 @@ import wandb; from fastai.callback.wandb import *
 from xcube.text.all import *
 from fastai.metrics import accuracy # there's an 'accuracy' metric in xcube as well
 
+# extra imports <remove later>
+import warnings; warnings.filterwarnings(action='ignore')
+# end extra imports
+
 torch.backends.cudnn.benchmark = True
 fastprogress.MAX_COLS = 80
 def pr(s):
@@ -47,6 +51,49 @@ def get_dls(source, data, bs, sl=16, workers=None):
                              before_batch=pad_input_chunk, num_workers=workers)
     return dls_clas
 
+def train_linear_attn(learn):
+    print("unfreezing the last layer...")
+    learn.fit(5, lr=3e-2)
+
+    print("unfreezing one LSTM...")
+    learn.freeze_to(-2)
+    learn.fit(1, lr=1e-2)
+
+    print("unfreezing one more LSTM...")
+    learn.freeze_to(-3)
+    learn.fit(1, lr=1e-2)
+
+    print("unfreezing the entire model...")
+    learn.unfreeze()
+    learn.fit(2, lr=1e-6)
+
+    print("Done!!!")
+    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+
+def train_plant(learn, epochs):
+    print("unfreezing the last layer and pretrained l2r...")
+    learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
+    learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+    print("unfreezing the LM decoder...")
+    learn.freeze_to(-3) # unfreeze the lm decoder
+    learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+    print("unfreezing one LSTM...")
+    learn.freeze_to(-4) # unfreeze one LSTM
+    learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+    print("unfreezing one more LSTM...")
+    learn.freeze_to(-5) # unfreeze one more LSTM
+    learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+
+    print("unfreezing the entire model...")
+    learn.unfreeze() # unfreeze the rest
+    learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6], wd=[0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])
+
+    print("Done!!!")
+    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+
 @call_parse
 def main(
     data: Param("Filename of the raw data", str)="mimic3-9k",
@@ -63,7 +110,10 @@ def main(
     log: Param("Log loss and metrics after each epoch", store_true)=False,
     workers:   Param("Number of workers", int)=None,
     save_model: Param("Save model on improvement after each epoch", store_true)=False,
-    fname: Param("Save model file", str)="mimic-9k"
+    fname: Param("Save model file", str)="mimic3-9k",
+    infer: Param("Don't train, just validate", int)=0,
+    metrics: Param("Metrics used in inference", str)="partial(precision_at_k, k=15)"
+    # model_path: Param("Model path for validation", str)="mimic3-9k"
 ):
     "Training of mimic classifier."
 
@@ -99,7 +149,7 @@ def main(
             cbs += L(CSVLogger(fname=logfname, append=True))
         if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
-                                   metrics=[partial(precision_at_k, k=1), F1ScoreMulti(thresh=0.14, average='macro')], path=tmp, cbs=cbs,
+                                   metrics=[partial(precision_at_k, k=15),partial(precision_at_k, k=5), F1ScoreMulti(thresh=0.14, average='macro'), F1ScoreMulti(thresh=0.14, average='micro')], path=tmp, cbs=cbs,
                                    pretrained=False,
                                    splitter=None,
                                    running_decoder=True,
@@ -116,31 +166,23 @@ def main(
             setattr(learn, 'splitter', awd_lstm_xclas_split)
             learn.create_opt()
 
+        if infer:
+            # import pdb; pdb.set_trace()
+            learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
+            try: 
+                learn = learn.load(learn.save_model.fname)
+                validate(learn)
+            except FileNotFoundError as e: 
+                print("Exception:", e)
+                print("Trained model not found!")
+            finally: exit()
+
         # Workaround: In PyTorch 2.0.1 need to set DistributedDataParallel() with find_unused_parameters=True,
         # to avoid a crash that only happens in distributed mode of xmltext_clasifier_learner.fit()
         ddp_scaler = DistributedDataParallelKwargs(bucket_cap_mb=15, find_unused_parameters=True)
         cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
         if wandblog: cms += L(wandb.init())
         with ContextManagers(cms):
-            print("unfreezing the last layer and pretrained l2r...")
-            learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
-            learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-
-            print("unfreezing the LM decoder...")
-            learn.freeze_to(-3) # unfreeze the lm decoder
-            learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-
-            print("unfreezing one LSTM...")
-            learn.freeze_to(-4) # unfreeze one LSTM
-            learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-
-            print("unfreezing one more LSTM...")
-            learn.freeze_to(-5) # unfreeze one more LSTM
-            learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-
-            print("unfreezing the entire model...")
-            learn.unfreeze() # unfreeze the rest
-            learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6], wd=[0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])
-
-
+            if plant: train_plant(learn, epochs)
+            else: train_linear_attn(learn)
 

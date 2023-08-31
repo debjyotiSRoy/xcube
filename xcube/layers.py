@@ -171,8 +171,8 @@ class XMLAttention(Module):
         self.attn = Lambda(Linear_Attention(self.lbs))
         # self.plant_wt = nn.Parameter(torch.zeros(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
         # self.splant_wt = nn.Parameter(torch.zeros(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
-        self.lin_wt = nn.Parameter(torch.ones(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
-        self.wts = nn.Parameter(tensor(0, 0, 1).float()) # (lin_wt, plant_wt, splant_wt)
+        # self.lin_wt = nn.Parameter(torch.ones(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
+        self.wgts = nn.Parameter(tensor(0, 0, 1).float()) # (lin_wt, plant_wt, splant_wt)
         # self.k = nn.Parameter(torch.empty(1).uniform_(0, n_lbs))
         # self.k = nn.Parameter(torch.empty(1).uniform_(0, 50))
         # self.k = nn.Parameter(torch.normal(mean=torch.tensor(30.0), std=0.01))
@@ -210,7 +210,8 @@ class XMLAttention(Module):
             
             # top_tok_attn_wgts = (1-self.plant)*top_tok_lin_attn_wgts + self.plant*top_tok_plant_attn_wgts
             # self.lin_wt, self.plant_wt, self.splant_wt = tensor(self.lin_wt, self.plant_wt, self.splant_wt).softmax(dim=-1)
-            top_tok_attn_wgts = self.wts[0]*top_tok_lin_attn_wgts + self.wts[1]*top_tok_plant_attn_wgts + self.wts[2]*top_tok_splant_attn_wgts
+            # self.wgts.data = self.wgts.softmax(dim=-1)
+            top_tok_attn_wgts = self.wgts[0]*top_tok_lin_attn_wgts + self.wgts[1]*top_tok_plant_attn_wgts + self.wgts[2]*top_tok_splant_attn_wgts
             lbs_cf = None
 
             # lin_comb_lin_plant = (1-self.plant)*lincomb(sentc, wgts=top_tok_lin_attn_wgts.transpose(1,2)) + self.plant*lincomb(sentc, wgts=top_tok_plant_attn_wgts.transpose(1,2))

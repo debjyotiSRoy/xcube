@@ -6,11 +6,11 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --track_train \
                                     --log \
                                     --lm \
-                                    --epochs="[5, 1, 1, 1, 1]" \
+                                    --epochs="[10, 1, 1, 1, 4]" \
                                     --bs=16 \
                                     --save_model \
                                     --fname="mimic3-9k_clas_rare50_plant" \
                                     --runs=1 \
                                     --plant \
                                     --infer=1 \
-                                   --metrics="partial(precision_at_k, k=1); F1ScoreMulti(thresh=0.14, average='macro')"
+                                    --metrics="partial(precision_at_k, k=1); F1ScoreMulti(thresh=0.5, average='macro'); F1ScoreMulti(thresh=0.5, average='micro')"

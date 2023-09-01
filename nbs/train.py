@@ -32,9 +32,10 @@ def get_dls(source, data, bs, sl=16, workers=None):
     data = join_path_file(data, source, ext='.csv')
     df = pd.read_csv(data,
                  header=0,
-                 names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid'],
-                 dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool})
+                 names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+                 dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
+    # pdb.set_trace()
     lbl_freqs = Counter()
     for labels in df.labels: lbl_freqs.update(labels.split(';'))
     lbls = list(lbl_freqs.keys())
@@ -44,7 +45,6 @@ def get_dls(source, data, bs, sl=16, workers=None):
     y_tfms = [ColReader('labels', label_delim=';'), MultiCategorize(vocab=lbls), OneHotEncode()]
     tfms = [x_tfms, y_tfms]
     dsets = Datasets(df, tfms, splits=splits)
-    # dsets = torch.load('tmp/mimic3-9k_dsets.pkl')
     dl_type = partial(SortedDL, shuffle=True)
     dls_clas = dsets.dataloaders(bs=bs, seq_len=sl,
                              dl_type=dl_type,
@@ -149,7 +149,7 @@ def main(
             cbs += L(CSVLogger(fname=logfname, append=True))
         if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
-                                   metrics=[partial(precision_at_k, k=15),partial(precision_at_k, k=5), F1ScoreMulti(thresh=0.14, average='macro'), F1ScoreMulti(thresh=0.14, average='micro')], path=tmp, cbs=cbs,
+                                   metrics=[partial(precision_at_k, k=15), F1ScoreMulti(thresh=0.5, average='macro')], path=tmp, cbs=cbs,
                                    pretrained=False,
                                    splitter=None,
                                    running_decoder=True,
@@ -165,9 +165,7 @@ def main(
             learn = rank0_first(learn.load_both, 'mimic3-9k_tok_lbl_info', 'p_L', 'lin_lambdarank_full', 'mimic3-9k_lm_decoder')
             setattr(learn, 'splitter', awd_lstm_xclas_split)
             learn.create_opt()
-
         if infer:
-            # import pdb; pdb.set_trace()
             learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
             try: 
                 learn = learn.load(learn.save_model.fname)

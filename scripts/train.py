@@ -51,6 +51,30 @@ def get_dls(source, data, bs, sl=16, workers=None):
                              before_batch=pad_input_chunk, num_workers=workers)
     return dls_clas
 
+def get_dev_dl(source, data, bs, sl=16, workers=None):
+    workers = ifnone(workers,min(8,num_cpus()))
+    data = join_path_file(data, source, ext='.csv')
+    df = pd.read_csv(data,
+                 header=0,
+                 names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+                 dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+    df[['text', 'labels']] = df[['text', 'labels']].astype(str)
+    # pdb.set_trace()
+    lbl_freqs = Counter()
+    for labels in df.labels: lbl_freqs.update(labels.split(';'))
+    lbls = list(lbl_freqs.keys())
+    splits = splitter(df)
+    lm_vocab = torch.load(source/'mimic3-9k_dls_lm_vocab.pkl')
+    x_tfms = [Tokenizer.from_df('text', n_workers=workers), attrgetter("text"), Numericalize(vocab=lm_vocab)]
+    y_tfms = [ColReader('labels', label_delim=';'), MultiCategorize(vocab=lbls), OneHotEncode()]
+    tfms = [x_tfms, y_tfms]
+    dsets = Datasets(df, tfms, splits=splits)
+    dl_type = partial(SortedDL, shuffle=True)
+    dls_clas = dsets.dataloaders(bs=bs, seq_len=sl,
+                             dl_type=dl_type,
+                             before_batch=pad_input_chunk, num_workers=workers)
+    return dls_clas
+
 def train_linear_attn(learn):
     print("unfreezing the last layer...")
     learn.fit(5, lr=3e-2)
@@ -70,36 +94,40 @@ def train_linear_attn(learn):
     print("Done!!!")
     print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
-def train_plant(learn, epochs):
+def train_plant(learn, epochs, lrs):
     print("unfreezing the last layer and pretrained l2r...")
     learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
-    learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 3e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    # learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
+    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
+    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
 
     print("unfreezing the LM decoder...")
     learn.freeze_to(-3) # unfreeze the lm decoder
-    learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
 
     print("unfreezing one LSTM...")
     learn.freeze_to(-4) # unfreeze one LSTM
-    learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], lrs[2][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
 
     print("unfreezing one more LSTM...")
     learn.freeze_to(-5) # unfreeze one more LSTM
-    learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 1e-2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], lrs[3][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
 
     print("unfreezing the entire model...")
     learn.unfreeze() # unfreeze the rest
-    learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6], wd=[0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])
+    learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[4][1], lrs[4][0]], wd=[0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])
 
     print("Done!!!")
     print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
 @call_parse
 def main(
-    data: Param("Filename of the raw data", str)="mimic3-9k",
+    data:  Param("Filename of the raw data", str)="mimic3-9k",
     lr:    Param("base Learning rate", float)=1e-2,
     bs:    Param("Batch size", int)=16,
-    epochs:Param("Number of epochs", str)="[10, 5, 5, 5, 10]",
+    epochs:Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[10, 5, 5, 5, 10]",
+    lrs:   Param("Number of epochs", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
     plant: Param("PLANT attention", store_true)=True,
@@ -124,10 +152,14 @@ def main(
     tmp = Path.cwd()/'tmp/models'
     tmp.mkdir(exist_ok=True, parents=True)
     tmp = tmp.parent
-    files = 'mimic3-9k_lm_finetuned.pth mimic3-9k_tok_lbl_info.pkl p_L.pkl lin_lambdarank_full.pth mimic3-9k_lm_decoder.pth'.split(' ')
-    for f in files:
+    files_mimic = 'mimic3-9k_lm_finetuned.pth mimic3-9k_lm_decoder.pth'.split(' ')
+    for f in files_mimic:
         if not (tmp/'models'/f).exists():
             (tmp/'models'/f).symlink_to(source/f) 
+    files_mimic_l2r = 'mimic3-9k_tok_lbl_info.pkl p_L.pkl lin_lambdarank_full.pth'.split(' ')
+    for f in files_mimic_l2r:
+        if not (tmp/'models'/f).exists():
+            (tmp/'models'/f).symlink_to(source_l2r/f) 
 
     # loading dataloaders
     dls_file = join_path_file(data+'_dls_clas_'+str(bs), tmp, ext='.pkl')
@@ -138,6 +170,7 @@ def main(
         torch.save(dls_clas, dls_file)
 
     epochs = json.loads(epochs)
+    lrs = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs)]
     for run in range(runs):
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {sum(epochs)}; lr: {lr}; bs: {bs}')
@@ -181,6 +214,6 @@ def main(
         cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
         if wandblog: cms += L(wandb.init())
         with ContextManagers(cms):
-            if plant: train_plant(learn, epochs)
+            if plant: train_plant(learn, epochs, lrs)
             else: train_linear_attn(learn)
 

@@ -122,15 +122,17 @@ def test_eqs(*args):
 from fastai.callback.tracker import SaveModelCallback
 
 # %% ../nbs/00_utils.ipynb 16
-def validate(learner, cb=SaveModelCallback):
+def validate(learner, cb=SaveModelCallback, **kwargs):
     "validates a `learner` within a context manager after temporarily removing `cb` if it exists"
     save_cb_idx = learner.cbs.argfirst(lambda o: isinstance(o, cb))
     if save_cb_idx is None:
-        print(learner.validate())
+        print(learner.validate(**kwargs))
         return
     print(f'best so far = {learner.cbs[save_cb_idx].best}')
     with learner.removed_cbs(learner.cbs[save_cb_idx]):
-        print(learner.validate())
+        vals = learner.validate(**kwargs)
+        names = learner.recorder._valid_mets.map(Self.name())
+        print('\n'.join([f"{n} = {v}" for n,v in zip(names,vals)]))
     save_cb_idx = learner.cbs.argfirst(lambda o: isinstance(o, cb))
     print(f'best so far = {learner.cbs[save_cb_idx].best}')
 

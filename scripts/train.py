@@ -68,12 +68,12 @@ def get_dev_dl(source, data, bs, sl=16, workers=None):
     x_tfms = [Tokenizer.from_df('text', n_workers=workers), attrgetter("text"), Numericalize(vocab=lm_vocab)]
     y_tfms = [ColReader('labels', label_delim=';'), MultiCategorize(vocab=lbls), OneHotEncode()]
     tfms = [x_tfms, y_tfms]
-    dsets = Datasets(df, tfms, splits=splits)
+    dev_dset = Datasets(df[df['split']=='dev'], tfms)
     dl_type = partial(SortedDL, shuffle=True)
-    dls_clas = dsets.dataloaders(bs=bs, seq_len=sl,
+    dev_dl = TfmdDL(dev_dset, bs=bs, seq_len=sl,
                              dl_type=dl_type,
-                             before_batch=pad_input_chunk, num_workers=workers)
-    return dls_clas
+                             before_batch=pad_input_chunk, num_workers=workers, device=default_device())
+    return dev_dl
 
 def train_linear_attn(learn):
     print("unfreezing the last layer...")
@@ -97,8 +97,8 @@ def train_linear_attn(learn):
 def train_plant(learn, epochs, lrs):
     print("unfreezing the last layer and pretrained l2r...")
     learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
-    # learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
+    learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
 
@@ -121,6 +121,28 @@ def train_plant(learn, epochs, lrs):
     print("Done!!!")
     print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
+@delegates()
+class TstLearner(Learner):
+    def __init__(self, dls=None, model=None, **kwargs): self.pred, self.xb, self.yb = None, None, None
+
+def compute_val(met, pred, targ, bs=16):
+    met.reset()
+    learn = TstLearner()
+    for learn.pred,learn.yb in zip(torch.split(pred, bs), torch.split(targ, bs)): met.accumulate(learn)
+    return met.value
+
+def compute_val2(met, dl, learn, pred, targ):
+    learn.model.eval()
+    met.reset()
+    _tst_learn = TstLearner()
+    pdb.set_trace()
+    for xb,yb in dl:
+        _tst_learn.yb = yb
+        _tst_learn.pred, *_ = learn.model(xb)
+        met.accumulate(_tst_learn)
+    return met.value
+
+
 @call_parse
 def main(
     data:  Param("Filename of the raw data", str)="mimic3-9k",
@@ -131,6 +153,7 @@ def main(
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
     plant: Param("PLANT attention", store_true)=True,
+    attn_init: Param("Initial wgts for Linear, Diff. PLANT and Static PLANT", str)="(0, 0, 1)",
     dump:  Param("Print model; don't train", int)=0,
     runs:  Param("Number of times to repeat training", int)=1,
     track_train: Param("Record training metrics", store_true)=False,
@@ -186,6 +209,7 @@ def main(
                                    pretrained=False,
                                    splitter=None,
                                    running_decoder=True,
+                                   attn_init=ast.literal_eval(attn_init),
                                    )
         if track_train: 
             assert learn.cbs[1].__class__ is Recorder
@@ -200,8 +224,18 @@ def main(
             learn.create_opt()
         if infer:
             learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
+            dev_dl = get_dev_dl(source, data, bs, workers=workers)
             try: 
                 learn = learn.load(learn.save_model.fname)
+                # validate(learn, dl=dev_dl)
+                pred, targ = learn.get_preds(dl=dev_dl)
+                xs = torch.linspace(0.05, 0.95, 30)
+                f1_macros = [compute_val(F1ScoreMulti(thresh=i, average='macro', sigmoid=False), pred, targ, bs=bs) for i in xs]
+                f1_micros =  [compute_val(F1ScoreMulti(thresh=i, average='micro', sigmoid=False), pred, targ, bs=bs) for i in xs]
+                thresh_macro = xs[f1_macros.index(max(f1_macros))]
+                thresh_micro = xs[f1_micros.index(max(f1_micros))]
+                learn.metrics[1] = F1ScoreMulti(thresh=thresh_macro, average='macro')
+                learn.metrics[2] = F1ScoreMulti(thresh=thresh_micro, average='micro')
                 validate(learn)
             except FileNotFoundError as e: 
                 print("Exception:", e)

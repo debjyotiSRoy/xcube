@@ -121,9 +121,9 @@ from ...utils import *
 # %% ../../../nbs/02_text.models.core.ipynb 21
 class LabelAttentionClassifier(Module):
     initrange=0.1
-    def __init__(self, n_hidden, n_lbs, plant=0.5, y_range=None):
+    def __init__(self, n_hidden, n_lbs, plant=0.5, attn_init=(0,0,1), y_range=None):
         store_attr('n_hidden,n_lbs,y_range')
-        self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden, plant=plant)
+        self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden, plant=plant, attn_init=attn_init)
         self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
         self.label_bias = _create_bias((self.n_lbs,), with_zeros=False)
         self.hl = torch.zeros(1)
@@ -174,7 +174,7 @@ def awd_lstm_xclas_split(model):
 
 # %% ../../../nbs/02_text.models.core.ipynb 28
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True, 
-                           plant=0.5):
+                           plant=0.5, attn_init=(0, 0, 1)):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
     config = ifnone(config, meta['config_clas']).copy()
@@ -183,7 +183,7 @@ def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, dr
     n_hidden = config[meta['hid_name']]
     config.pop('output_p')
     init = config.pop('init') if 'init' in config else None
-    decoder = LabelAttentionClassifier(n_hidden, n_class, plant=plant, y_range=y_range)
+    decoder = LabelAttentionClassifier(n_hidden, n_class, plant=plant, attn_init=attn_init, y_range=y_range)
     encoder = AttentiveSentenceEncoder(seq_len, arch(vocab_sz, **config), decoder, pad_idx=pad_idx, max_len=max_len, running_decoder=running_decoder)
     model =  SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)

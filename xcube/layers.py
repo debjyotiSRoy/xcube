@@ -164,7 +164,7 @@ from .utils import *
 # %% ../nbs/01_layers.ipynb 52
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
-    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5):
+    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1)):
         store_attr('n_lbs,emb_sz,embed_p,plant')
         self.lbs = Embedding(n_lbs, emb_sz)
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
@@ -172,7 +172,7 @@ class XMLAttention(Module):
         # self.plant_wt = nn.Parameter(torch.zeros(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
         # self.splant_wt = nn.Parameter(torch.zeros(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
         # self.lin_wt = nn.Parameter(torch.ones(1)) #nn.Parameter(torch.empty(1).uniform_(0,1))
-        self.wgts = nn.Parameter(tensor(0, 0, 1).float()) # (lin_wt, plant_wt, splant_wt)
+        self.wgts = nn.Parameter(tensor(attn_init).float()) # (lin_wt, plant_wt, splant_wt)
         # self.k = nn.Parameter(torch.empty(1).uniform_(0, n_lbs))
         # self.k = nn.Parameter(torch.empty(1).uniform_(0, 50))
         # self.k = nn.Parameter(torch.normal(mean=torch.tensor(30.0), std=0.01))

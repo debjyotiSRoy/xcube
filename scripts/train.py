@@ -97,8 +97,8 @@ def train_linear_attn(learn):
 def train_plant(learn, epochs, lrs):
     print("unfreezing the last layer and pretrained l2r...")
     learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
-    learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
+    # learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
 
@@ -148,8 +148,8 @@ def main(
     data:  Param("Filename of the raw data", str)="mimic3-9k",
     lr:    Param("base Learning rate", float)=1e-2,
     bs:    Param("Batch size", int)=16,
-    epochs:Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[10, 5, 5, 5, 10]",
-    lrs:   Param("Number of epochs", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    epochs:Param("Number of epochs", str)="[10, 5, 5, 5, 10]",
+    lrs:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
     plant: Param("PLANT attention", store_true)=True,
@@ -213,7 +213,7 @@ def main(
                                    )
         if track_train: 
             assert learn.cbs[1].__class__ is Recorder
-            setattr(learn.cbs[1], 'train_metrics', True)
+            setattr(learn.cbs[1], 'train_metrics', true)
 
         if dump: pr(learn.model); exit()
         if fp16: learn = learn.to_fp16()

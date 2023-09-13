@@ -1,0 +1,3 @@
+echo "files crated:"
+find . -type f -name '*mimic4_icd10*' 
+find . -type f -name '*mimic4_icd10*' -exec rm -i {} \;

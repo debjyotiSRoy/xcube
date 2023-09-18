@@ -3,13 +3,12 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
     --data="mimic4_icd10_full" \
     --fp16 \
     --workers=16 \
-    --track_train \
     --log \
-    --epochs="[1, 4]" \
+    --epochs="[1, 15]" \
     --lrs="[1e-3, 1e-5]" \
     --bs=384 \
     --save_model \
     --fname="mimic4_icd10_lm" \
     --runs=1 \
-    --infer=1 \
-
+    --infer=0 \
+    --train_from_ckpt

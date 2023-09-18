@@ -35,8 +35,6 @@ def get_dls(source, data, bs=384, sl=80, workers=None):
                  usecols=['text', 'labels'],
                  dtype={'text': str, 'labels': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
-    # pdb.set_trace()
-    df = df[:2000]
     dls_lm = DataBlock(
           blocks=TextBlock.from_df('text', is_lm=True),
           get_x=ColReader('text'),
@@ -60,6 +58,7 @@ def main(
     save_model: Param("Save model on improvement after each epoch", store_true)=False,
     fname: Param("Save model file", str)="mimic4",
     infer: Param("Don't train, just validate", int)=0,
+    train_from_ckpt: Param("Load the most recent model and train", store_true)=False
 ):
     "Training of AWD-LSTM langauge model."
 
@@ -82,7 +81,7 @@ def main(
     epochs = json.loads(epochs)
     lrs = json.loads(lrs)
     
-    cbs = SaveModelCallback(monitor='valid_accuracy', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
+    cbs = SaveModelCallback(monitor='accuracy', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
     if log: 
         logfname = join_path_file(fname, tmp, ext='.csv')
         if logfname.exists(): logfname.unlink()
@@ -90,7 +89,7 @@ def main(
     if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
     learn = language_model_learner(
         dls_lm, AWD_LSTM, drop_mult=0.3,
-        metrics=[accuracy, Perplexity()], cbs=cbs)
+        metrics=[accuracy, Perplexity()], cbs=cbs, path=tmp)
     if track_train: 
         assert learn.cbs[1].__class__ is Recorder
         setattr(learn.cbs[1], 'train_metrics', true)
@@ -111,9 +110,21 @@ def main(
     cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
     if wandblog: cms += L(wandb.init())
     with ContextManagers(cms):
-        learn.fit_one_cycle(epochs[0], lrs[0])
-        learn.unfreeze()
-        learn.fit(epochs[1], lrs[1])
+        if not train_from_ckpt:
+            lr_min, lr_steep, lr_valley, lr_slide = learn.lr_find(suggest_funcs=(minimum, steep, valley, slide))
+            print(lr_min, lr_steep, lr_valley, lr_slide)
+            learn.fit_one_cycle(epochs[0], lr_min)
+            learn.unfreeze()
+            learn.fit(epochs[1], lrs[1])
+        else:
+            learn = learn.load(learn.save_model.fname)
+            validate(learn)
+            print(f"We are monitoring {learn.save_model.monitor}")
+            best = input(f"Input the best {learn.save_model.monitor} so far: ")
+            learn.save_model.best = float(best)
+            epochs = int(input("how many epochs do you you want to train: "))
+            learn.unfreeze()
+            learn.fit(epochs, lrs[1])
     #saving the encoder of the LM
     learn.save_encoder(fname+'_finetuned')
     #saving the decoder of the LM

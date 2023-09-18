@@ -32,6 +32,7 @@ class XURLs():
     MIMIC3 = f'{S3}mimic3/mimic3.tgz'
     MIMIC3_L2R = f'{S3}mimic3/mimic3_l2r/mimic3_l2r.tgz'
     MIMIC4 = f'{S3}mimic4/mimic4.tgz'
+    MIMIC4_L2R = f'{S3}mimic4/mimic4_l2r/mimic4_l2r.tgz'
     
     def path(
         url:str='.', # File to download

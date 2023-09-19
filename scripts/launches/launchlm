@@ -1,5 +1,5 @@
 accelerate launch --mixed_precision=fp16 --num_processes=1 \
-    train_lm.py \
+    ../train_lm.py \
     --data="mimic4_icd10_full" \
     --fp16 \
     --workers=16 \

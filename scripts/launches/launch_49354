@@ -1,0 +1,21 @@
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
+                                    ../train.py \
+                                    --data="mimic3-9k_49354" \
+                                    --fp16 \
+                                    --workers=16 \
+                                    --track_train \
+                                    --log \
+                                    --lm \
+                                    --epochs="[10, 2, 2, 2, 4]" \
+                                    --lrs="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
+                                    --bs=16 \
+                                    --save_model \
+                                    --fname="mimic3-9k_clas_49354_plant" \
+                                    --runs=1 \
+                                    --plant \
+                                    --attn_init="(1,1,1)" \
+                                    --infer=0 \
+                                    --metrics="partial(precision_at_k, k=1); F1ScoreMulti(thresh=0.5, average='macro'); F1ScoreMulti(thresh=0.5, average='micro')"
+
+echo "files created:"
+find .. -name "mimic3-9k_clas_49354_plant*"                               

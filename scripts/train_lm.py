@@ -56,6 +56,7 @@ def main(
     log: Param("Log loss and metrics after each epoch", store_true)=False,
     workers:   Param("Number of workers", int)=None,
     save_model: Param("Save model on improvement after each epoch", store_true)=False,
+    root_dir: Param("Root dir for saving models", str)="..",
     fname: Param("Save model file", str)="mimic4",
     infer: Param("Don't train, just validate", int)=0,
     train_from_ckpt: Param("Load the most recent model and train", store_true)=False
@@ -64,7 +65,7 @@ def main(
 
     source = rank0_first(untar_xxx, XURLs.MIMIC4)
     # make tmp directory to save and load models and dataloaders
-    tmp = Path.cwd()/'tmp/models'
+    tmp = Path(root_dir)/'tmp/models'
     tmp.mkdir(exist_ok=True, parents=True)
     tmp = tmp.parent
 

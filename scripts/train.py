@@ -81,15 +81,15 @@ def train_linear_attn(learn):
 
     print("unfreezing one LSTM...")
     learn.freeze_to(-2)
-    learn.fit(1, lr=1e-2)
+    learn.fit(5, lr=1e-2)
 
     print("unfreezing one more LSTM...")
     learn.freeze_to(-3)
-    learn.fit(1, lr=1e-2)
+    learn.fit(5, lr=1e-2)
 
     print("unfreezing the entire model...")
     learn.unfreeze()
-    learn.fit(2, lr=1e-6)
+    learn.fit(10, lr=1e-6)
 
     print("Done!!!")
     print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
@@ -98,8 +98,8 @@ def train_plant(learn, epochs, lrs):
     print("unfreezing the last layer and pretrained l2r...")
     learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
     # learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
-    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
+    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
+    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
 
     print("unfreezing the LM decoder...")
@@ -161,6 +161,7 @@ def main(
     log: Param("Log loss and metrics after each epoch", store_true)=False,
     workers:   Param("Number of workers", int)=None,
     save_model: Param("Save model on improvement after each epoch", store_true)=False,
+    root_dir: Param("Root dir for saving models", str)="..",
     fname: Param("Save model file", str)="mimic3-9k",
     infer: Param("Don't train, just validate", int)=0,
     metrics: Param("Metrics used in inference", str)="partial(precision_at_k, k=15)"
@@ -172,7 +173,8 @@ def main(
     source_l2r = rank0_first(untar_xxx, XURLs.MIMIC3_L2R)
 
     # make tmp directory to save and load models and dataloaders
-    tmp = Path.cwd()/'tmp/models'
+    # pdb.set_trace()
+    tmp = Path(root_dir)/'tmp/models'
     tmp.mkdir(exist_ok=True, parents=True)
     tmp = tmp.parent
     files_mimic = 'mimic3-9k_lm_finetuned.pth mimic3-9k_lm_decoder.pth'.split(' ')

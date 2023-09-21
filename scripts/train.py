@@ -207,7 +207,8 @@ def main(
             cbs += L(CSVLogger(fname=logfname, append=True))
         if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
-                                   metrics=[partial(precision_at_k, k=15), F1ScoreMulti(thresh=0.5, average='macro')], path=tmp, cbs=cbs,
+                                #    metrics=[partial(precision_at_k, k=15), F1ScoreMulti(thresh=0.5, average='macro')], path=tmp, cbs=cbs,
+                                   metrics=[partial(precision_at_k, k=15)], path=tmp, cbs=cbs,
                                    pretrained=False,
                                    splitter=None,
                                    running_decoder=True,

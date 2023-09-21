@@ -1,0 +1,4 @@
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
+                                    ../train_l2r.py \
+                                    --source_url="XURLs.MIMIC4_L2R" \
+                                    --data="mimic4_icd10_tok_lbl" \

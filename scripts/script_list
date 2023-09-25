@@ -1,2 +1,18 @@
-launchrare50
-launchtiny
+launch_6400 --fname mimic3-9k_clas_6400_plant --plant
+launch_6400 --fname mimic3-9k_clas_6400 --plant
+launch_3200 --fname mimic3-9k_clas_3200_plant --plant
+launch_3200 --fname mimic3-9k_clas_3200 --plant
+launch_1600 --fname mimic3-9k_clas_1600_plant --plant
+launch_1600 --fname mimic3-9k_clas_1600 --plant
+launch_800 --fname mimic3-9k_clas_800_plant --plant
+launch_800 --fname mimic3-9k_clas_800 --plant
+launch_400 --fname mimic3-9k_clas_400_plant --plant
+launch_400 --fname mimic3-9k_clas_400 --plant
+launch_200 --fname mimic3-9k_clas_200_plant --plant
+launch_200 --fname mimic3-9k_clas_200 --plant
+launch_100 --fname mimic3-9k_clas_100_plant --plant
+launch_100 --fname mimic3-9k_clas_100 --plant
+launch_50 --fname mimic3-9k_clas_50_plant --plant
+launch_50 --fname mimic3-9k_clas_50 --plant
+launch_25 --fname mimic3-9k_clas_25_plant --plant
+launch_25 --fname mimic3-9k_clas_25 --plant

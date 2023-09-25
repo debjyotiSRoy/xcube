@@ -73,7 +73,7 @@ def main(
     dls_file = join_path_file(data+'_dls_lm', tmp, ext='.pkl')
     vocab_file = join_path_file(data+'_dls_lm_vocab', tmp, ext='.pkl')
     if dls_file.exists(): 
-            dls_lm = torch.load(dls_file, map_location=torch.device('cpu'))
+        dls_lm = torch.load(dls_file, map_location=torch.device('cpu'))
     else:
         dls_lm, vocab = get_dls(source, data, bs, workers=workers)
         torch.save(dls_lm, dls_file)

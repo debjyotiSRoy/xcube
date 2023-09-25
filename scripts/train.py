@@ -75,31 +75,32 @@ def get_dev_dl(source, data, bs, sl=16, workers=None):
                              before_batch=pad_input_chunk, num_workers=workers, device=default_device())
     return dev_dl
 
-def train_linear_attn(learn):
+def train_linear_attn(learn, epochs, lrs, lrs_sgdr, fit_sgdr=False):
     print("unfreezing the last layer...")
-    learn.fit(5, lr=3e-2)
+    if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=lrs_sgdr[0][0], wd=0.01)
+    else:  learn.fit(epochs[0]+epochs[1], lr=lrs[0][0])
 
     print("unfreezing one LSTM...")
     learn.freeze_to(-2)
-    learn.fit(5, lr=1e-2)
+    learn.fit(epochs[2], lr=lrs[2][0])
 
     print("unfreezing one more LSTM...")
     learn.freeze_to(-3)
-    learn.fit(5, lr=1e-2)
+    learn.fit(epochs[3], lr=lrs[3][0])
 
     print("unfreezing the entire model...")
     learn.unfreeze()
-    learn.fit(10, lr=1e-6)
+    learn.fit(epochs[4], lr=lrs[4][0], wd=0.3)
 
     print("Done!!!")
     print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
-def train_plant(learn, epochs, lrs):
+def train_plant(learn, epochs, lrs, lrs_sgdr, fit_sgdr=False):
     print("unfreezing the last layer and pretrained l2r...")
     learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
-    # learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
-    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
+    if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[0][1], lrs_sgdr[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
+    else: learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
 
     print("unfreezing the LM decoder...")
@@ -142,6 +143,9 @@ def compute_val2(met, dl, learn, pred, targ):
         met.accumulate(_tst_learn)
     return met.value
 
+class CancelValid(Callback):
+    order = 100
+    def before_validate(self): raise CancelValidException()
 
 @call_parse
 def main(
@@ -150,9 +154,11 @@ def main(
     bs:    Param("Batch size", int)=16,
     epochs:Param("Number of epochs", str)="[10, 5, 5, 5, 10]",
     lrs:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    lrs_sgdr:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
-    plant: Param("PLANT attention", store_true)=True,
+    plant: Param("PLANT attention", bool_arg)=True,
+    fit_sgdr: Param("PLANT attention", store_true)=False,
     attn_init: Param("Initial wgts for Linear, Diff. PLANT and Static PLANT", str)="(0, 0, 1)",
     dump:  Param("Print model; don't train", int)=0,
     runs:  Param("Number of times to repeat training", int)=1,
@@ -196,12 +202,13 @@ def main(
 
     epochs = json.loads(epochs)
     lrs = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs)]
+    lrs_sgdr = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_sgdr)]
     for run in range(runs):
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {sum(epochs)}; lr: {lr}; bs: {bs}')
 
         cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
-        if log: 
+        if not infer and log: 
             logfname = join_path_file(fname, tmp, ext='.csv')
             if logfname.exists(): logfname.unlink()
             cbs += L(CSVLogger(fname=logfname, append=True))
@@ -237,8 +244,8 @@ def main(
                 f1_micros =  [compute_val(F1ScoreMulti(thresh=i, average='micro', sigmoid=False), pred, targ, bs=bs) for i in xs]
                 thresh_macro = xs[f1_macros.index(max(f1_macros))]
                 thresh_micro = xs[f1_micros.index(max(f1_micros))]
-                learn.metrics[1] = F1ScoreMulti(thresh=thresh_macro, average='macro')
-                learn.metrics[2] = F1ScoreMulti(thresh=thresh_micro, average='micro')
+                learn.metrics += F1ScoreMulti(thresh=thresh_macro, average='macro')
+                learn.metrics += F1ScoreMulti(thresh=thresh_micro, average='micro')
                 validate(learn)
             except FileNotFoundError as e: 
                 print("Exception:", e)
@@ -251,6 +258,6 @@ def main(
         cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
         if wandblog: cms += L(wandb.init())
         with ContextManagers(cms):
-            if plant: train_plant(learn, epochs, lrs)
-            else: train_linear_attn(learn)
+            if plant: train_plant(learn, epochs, lrs, lrs_sgdr, fit_sgdr=fit_sgdr)
+            else: train_linear_attn(learn, epochs, lrs, lrs_sgdr, fit_sgdr=fit_sgdr)
 

@@ -147,6 +147,18 @@ class CancelValid(Callback):
     order = 100
     def before_validate(self): raise CancelValidException()
 
+def _print_metrics(vals, learn):
+    print(f"test_loss = {vals[0]}")
+    for m,v in zip(learn.metrics[:3], vals[1:4]):
+        if not isinstance(m.func, partial): raise AssertionError 
+        func = m.func.func
+        name = '_'.join(L(m.name.split('_')[:-1] + [m.func.keywords['k']]).map(str))
+        print(f"{name} = {v}")
+    for m,v in zip(learn.metrics[3:], vals[4:]):
+        name = m.name + '_' + m.kwargs['average']
+        print(f"{name} = {v}")
+        
+
 @call_parse
 def main(
     data:  Param("Filename of the raw data", str)="mimic3-9k",
@@ -246,7 +258,8 @@ def main(
                 thresh_micro = xs[f1_micros.index(max(f1_micros))]
                 learn.metrics += F1ScoreMulti(thresh=thresh_macro, average='macro')
                 learn.metrics += F1ScoreMulti(thresh=thresh_micro, average='micro')
-                validate(learn)
+                vals = validate(learn)
+                _print_metrics(vals, learn)
             except FileNotFoundError as e: 
                 print("Exception:", e)
                 print("Trained model not found!")

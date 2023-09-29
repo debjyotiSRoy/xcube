@@ -135,6 +135,7 @@ def validate(learner, cb=SaveModelCallback, **kwargs):
         print('\n'.join([f"{n} = {v}" for n,v in zip(names,vals)]))
     save_cb_idx = learner.cbs.argfirst(lambda o: isinstance(o, cb))
     print(f'best so far = {learner.cbs[save_cb_idx].best}')
+    return vals
 
 # %% ../nbs/00_utils.ipynb 17
 def cudamem(device=default_device()):

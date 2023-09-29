@@ -1,34 +1,19 @@
 #!/bin/bash
 
+# Include the parameter parsing function
+source param_parser.sh
+
 # Initialize parameters with default values
 fname="mimic3-9k_clas_6400"
 plant=false
-
-# Function to parse named parameters
-parse_params() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -f|--fname)
-                fname="$2"
-                shift 2
-                ;;
-            -p|--plant)
-                plant=true
-                shift
-                ;;
-            *)
-                echo "Unknown option: $1"
-                exit 1
-                ;;
-        esac
-done
-}
+infer=0
 
 # Parse named parameters
 parse_params "$@"
 
 # Check and use string and boolean parameters
 echo "fname is: $fname"
+echo "infer is: $infer"
 
 if [ "$plant" = true ]; then
     echo "plant is true"
@@ -47,14 +32,14 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --epochs="[10, 8, 8, 8, 0]" \
                                     --lrs="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
                                     --fit_sgdr \
-                                    --lrs_sgdr="[(0.15,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
+                                    --lrs_sgdr="[(0.35,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
                                     --bs=16 \
                                     --save_model \
                                     --fname=$fname \
                                     --runs=1 \
                                     --plant=$plant \
-                                    --attn_init="(0,1,1)" \
-                                    --infer=0 \
+                                    --attn_init="(1,0,0)" \
+                                    --infer=$infer \
                                     --metrics="partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15)"
 echo "files created:"
 find .. -name "$fname*" 

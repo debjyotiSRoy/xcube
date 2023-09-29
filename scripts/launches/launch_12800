@@ -1,20 +1,45 @@
+#!/bin/bash
+
+# Include the parameter parsing function
+source param_parser.sh
+
+# Initialize parameters with default values
+fname="mimic3-9k_clas_12800"
+plant=false
+infer=0
+
+# Parse named parameters
+parse_params "$@"
+
+# Check and use string and boolean parameters
+echo "fname is: $fname"
+echo "infer is: $infer"
+
+if [ "$plant" = true ]; then
+    echo "plant is true"
+else
+    echo "plant is false"
+fi
+
 accelerate launch --mixed_precision=fp16 --num_processes=1 \
-                                    ../train.py \
+                                    train.py \
                                     --data="mimic3-9k_12800" \
                                     --fp16 \
                                     --workers=16 \
                                     --track_train \
                                     --log \
                                     --lm \
-                                    --epochs="[3, 1, 1, 1, 4]" \
+                                    --epochs="[10, 8, 8, 8, 0]" \
                                     --lrs="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
+                                    --fit_sgdr \
+                                    --lrs_sgdr="[(0.15,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
                                     --bs=16 \
                                     --save_model \
-                                    --fname="mimic3-9k_clas_12800_plant" \
+                                    --fname=$fname \
                                     --runs=1 \
-                                    --plant \
+                                    --plant=$plant \
                                     --attn_init="(0,1,1)" \
-                                    --infer=0 \
-                                    --metrics="partial(precision_at_k, k=1); F1ScoreMulti(thresh=0.5, average='macro'); F1ScoreMulti(thresh=0.5, average='micro')"
+                                    --infer=$infer \
+                                    --metrics="partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15)"
 echo "files created:"
-find .. -name "mimic3-9k_clas_12800_plant*"                               
+find .. -name "$fname*" 

@@ -1,0 +1,2 @@
+launch_25 --fname mimic3-9k_clas_25_plant --plant --infer 1
+launch_50 --fname mimic3-9k_clas_50_plant --plant --infer 1

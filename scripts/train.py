@@ -99,21 +99,29 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, fit_sgdr=False):
     print("unfreezing the last layer and pretrained l2r...")
     learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
+    wd=5
     if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[0][1], lrs_sgdr[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
     else: learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
     # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
+    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
     print("unfreezing the LM decoder...")
     learn.freeze_to(-3) # unfreeze the lm decoder
-    learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    # learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], 0.15], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
     print("unfreezing one LSTM...")
     learn.freeze_to(-4) # unfreeze one LSTM
-    learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], lrs[2][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    # learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], lrs[2][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], 0.15], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
     print("unfreezing one more LSTM...")
     learn.freeze_to(-5) # unfreeze one more LSTM
-    learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], lrs[3][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    # learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], lrs[3][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], 0.15], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
+    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
     print("unfreezing the entire model...")
     learn.unfreeze() # unfreeze the rest

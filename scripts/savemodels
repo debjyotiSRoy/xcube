@@ -1,0 +1,1 @@
+find . -type f -name '*mimic4_icd10*.pth' -exec cp {} ~/.xcube/data/mimic4/ \;

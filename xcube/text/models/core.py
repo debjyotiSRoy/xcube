@@ -124,7 +124,8 @@ class LabelAttentionClassifier(Module):
     def __init__(self, n_hidden, n_lbs, plant=0.5, attn_init=(0,0,1), y_range=None):
         store_attr('n_hidden,n_lbs,y_range')
         self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden, plant=plant, attn_init=attn_init)
-        self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
+        # self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
+        self.boost_attn = ElemWiseLin(self.n_lbs, 400)
         self.label_bias = _create_bias((self.n_lbs,), with_zeros=False)
         self.hl = torch.zeros(1)
     
@@ -132,6 +133,7 @@ class LabelAttentionClassifier(Module):
         if isinstance(sentc, tuple): inp, sentc, mask = sentc # sentc is the stuff coming outta SentenceEncoder i.e., shape (bs, max_len, nh) in other words the concatenated output of the AWD_LSTM
         test_eqs(inp.shape, sentc.shape[:-1], mask.shape)
         sentc = sentc.masked_fill(mask[:, :, None], 0)
+        # import pdb; pdb.set_trace()
         attn, wgts, lbs_cf = self.pay_attn(inp, sentc, mask) #shape (bs, n_lbs, n_hidden)
         attn = self.boost_attn(attn) # shape (bs, n_lbs, n_hidden)
         bs = self.hl.size(0)

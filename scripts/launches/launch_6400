@@ -32,7 +32,7 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --epochs="[10, 8, 8, 8, 0]" \
                                     --lrs="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
                                     --fit_sgdr \
-                                    --lrs_sgdr="[(0.35,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
+                                    --lrs_sgdr="[(0.15,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
                                     --bs=16 \
                                     --save_model \
                                     --fname=$fname \

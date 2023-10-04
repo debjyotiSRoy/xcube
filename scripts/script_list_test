@@ -1,0 +1,2 @@
+launch_25 --fname mimic3-9k_clas_25 --infer 1
+launch_50 --fname mimic3-9k_clas_50 --infer 1

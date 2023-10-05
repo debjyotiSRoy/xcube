@@ -151,7 +151,6 @@ class L2RDataLoader(DataLoader):
     def before_iter(self):
         # shuffling
         # randperm = torch.randint(low=0, high=self.dataset.shape[1], size=(self.dataset.shape[1],))
-        # pdb.set_trace()
         randperm_toks_idxs = torch.randperm(self.dataset.shape[1])
         self.dataset = self.dataset[:, randperm_toks_idxs]
         randperm_lbs_idxs = torch.randperm(self.dataset.shape[0])
@@ -166,7 +165,8 @@ class L2RDataLoader(DataLoader):
         deficit = self.sl - trn_sqs[-1].shape[1]
         if deficit: 
             test_eq(trn_sqs[-1].shape, (self.dataset_pad.shape[0], self.dataset_pad.shape[1]%self.sl,4));
-            trn_sqs[-1] = trn_sqs[-1].repeat_interleave(self.sl//trn_sqs[-1].shape[1], dim=1)
+            # trn_sqs[-1] = trn_sqs[-1].repeat_interleave(self.sl//trn_sqs[-1].shape[1], dim=1)
+            trn_sqs[-1] = torch.cat((trn_sqs[-1],trn_sqs[-1][:, -1].unsqueeze(1).repeat_interleave(deficit, dim=1)), dim=1)
         test_eq(trn_sqs[-1].shape, (self.dataset_pad.shape[0], self.sl,4));
         
         trn_sqs = map(partial(torch.chunk, chunks=self.lbs_chunks), trn_sqs)

@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Include the parameter parsing function
+source param_parser.sh
+
+# Initialize parameters with default values
+fname="mimic4_icd10_clas_full"
+plant=false
+infer=0
+
+# Parse named parameters
+parse_params "$@"
+
+# Check and use string and boolean parameters
+echo "fname is: $fname"
+echo "infer is: $infer"
+
+if [ "$plant" = true ]; then
+    echo "plant is true"
+else
+    echo "plant is false"
+fi
+
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
+                                    train.py \
+                                    --source_url="XURLs.MIMIC4" \
+                                    --source_url_l2r="XURLs.MIMIC4_L2R" \
+                                    --data="mimic4_icd10_full" \
+                                    --files_lm="mimic4_icd10_lm_finetuned.pth,mimic4_icd10_lm_decoder.pth,mimic4_icd10_dls_lm_vocab.pkl" \
+                                    --fp16 \
+                                    --workers=16 \
+                                    --track_train \
+                                    --log \
+                                    --lm \
+                                    --epochs="[6, 5, 8, 8, 0]" \
+                                    --lrs="[(6e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
+                                    --lrs_sgdr="[(0.8,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]" \
+                                    --wd_linattn="[0.01, 0.01, 0.01, 0.3]" \
+                                    --bs=16 \
+                                    --save_model \
+                                    --fname=$fname \
+                                    --runs=1 \
+                                    --plant=$plant \
+                                    --attn_init="(0,1,1)" \
+                                    --infer=$infer \
+                                    --metrics="partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15)"
+echo "files created:"
+find .. -name "$fname*" 

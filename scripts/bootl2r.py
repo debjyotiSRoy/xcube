@@ -22,20 +22,27 @@ def get_info(source, data, bs=8, chnk_sz=200, workers=None):
                  dtype={'text': str, 'labels': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
 
-    # sampling for quick iterations: remove later 
-    bs = 8
-    cut = len(df) - len(df)%bs
-    df = df[:cut]
-    len(df)
+    # # sampling for quick iterations: remove later 
+    # bs = 8
+    # cut = len(df) - len(df)%bs
+    # df = df[:cut]
+    # len(df)
 
-    _arr = np.arange(0, len(df), bs)
-    # mask = (_arr > 4000) & (_arr < 5000)
-    mask = (_arr > 500) & (_arr < 1000)
-    _n = np.random.choice(_arr[mask], 1)
-    df = df.sample(n=_n, random_state=89, ignore_index=True)
-    len(df)
-    # sampling for quick iterations: remove later 
+    # _arr = np.arange(0, len(df), bs)
+    # # mask = (_arr > 4000) & (_arr < 5000)
+    # mask = (_arr > 500) & (_arr < 1000)
+    # _n = np.random.choice(_arr[mask], 1)
+    # df = df.sample(n=_n, random_state=89, ignore_index=True)
+    # len(df)
+    # # sampling for quick iterations: remove later 
 
+    # Duplicate the last row # this is a hack <fix later>
+    last_row = df.iloc[-1:]  # Get the last row as a DataFrame
+    df = pd.concat([df, last_row], ignore_index=True)
+    # this is a hack <fix later>
+
+    print("Read the data into dataframe!")
+    ic(len(df), df.head(1))
     info = MutualInfoGain(df, bs=bs, chnk_sz=chnk_sz, lbs_desc=None) # provide lbs_desc if you have it
     return info
 
@@ -49,6 +56,7 @@ def test_nanegs(**kwargs):
         if has_negs: raise Exception(f"{k} has negs")
 
 def stat_transform(mut_infos, save_dir):
+    ic(mut_infos.shape)
     orig_shape = mut_infos.shape
     mut_infos = mut_infos.cpu().numpy().reshape(-1)
     ic(mut_infos.min(), mut_infos.max(), mut_infos.mean())
@@ -57,6 +65,7 @@ def stat_transform(mut_infos, save_dir):
     # np.where(mut_infos<0, 1, 0).sum() # or, better yet
     where_negs = mut_infos < 0
     ic(np.sum(where_negs))
+    print("Converting the negs into eps..")
     eps = np.float32(1e-20)
     mut_infos[where_negs] = eps
     test_eq(np.sum(mut_infos<0), 0)
@@ -93,11 +102,14 @@ def main(
     tmp = tmp.parent
 
     info = get_info(source, data, bs=bs, chnk_sz=chnk_sz, workers=None)
+    print("\nOnehotifying the text and labels...")
     dsets = info.onehotify() # test
     toks, lbs = dsets.vocab # test
+    print(f"Number of Tokens = {len(toks)}, Number of labels = {len(lbs)}")
     x, y = dsets[0] # test
     test_eq(tensor(dsets.tfms[1][2].decode(y)), torch.where(y==1)[0]) # test
     test_eq(tensor(dsets.tfms[0][-1].decode(x)), torch.where(x==1)[0])
+    print(f"chunking the labels into {len(lbs)/chnk_sz} many chunks, each chunk has {chnk_sz} many labels.")
     dls = info.lbs_chunked()
     assert isinstance(dls[0], TfmdDL) # test
     test_eq(len(dls),  np.ceil(len(lbs)/chnk_sz)) # test
@@ -106,6 +118,7 @@ def main(
     lbs_0 = torch.cat([yb[0] for dl in dls for _,yb in itertools.islice(dl, 1)]) # test
     y = y.to(default_device()) # test
     test_eq(lbs_0, y) # test
+    print(f"Computing joint pmf by batching {len(dsets)} datapoints into batches of size {bs} (so total {len(dsets)/bs} mini-batches). Also each mini-batch only has a chunk of the {chnk_sz} lbs (and we have {len(lbs)/chnk_sz} many dataloders).")
     p_TL = info.joint_pmf()
     test_eq(p_TL.shape, (info.toksize, info.lblsize, 2, 2)) # test
     p_T, p_L, p_TxL, H_T, H_L, I_TL = info.compute()
@@ -116,6 +129,7 @@ def main(
     test_eq(H_T.shape, [info.toksize])
     test_eq(H_L.shape, [info.lblsize])
     test_eq(I_TL.shape, (info.toksize, info.lblsize))
+    print("Done computing joint pmf!")
     howmany = torch.where(I_TL < 0, True, False).sum().item()
     negs = torch.where(I_TL < 0, I_TL, I_TL.new_zeros(I_TL.shape))
     print("Avg value of negs:", negs.sum()/howmany)
@@ -134,6 +148,7 @@ def main(
     generated_files.append(join_path_file(fname +'_tok_lbl_info', tmp, ext='.pkl'))
 
     # getting ready
+    l2r_bootstrap = torch.load(join_path_file(fname +'_tok_lbl_info', tmp, ext='.pkl'), map_location=torch.device('cpu'))
     info = l2r_bootstrap.get('mutual_info_jaccard', None)
     test_eq(info.shape, (len(toks), len(lbs)))
     bcx_mut_infos = torch.from_numpy(stat_transform(info, tmp)).to(default_device())

@@ -27,20 +27,27 @@ def splitter(df):
     valid = df.index[df['is_valid']].to_list()
     return train, valid
 
-def get_dls(source, data, bs, sl=16, workers=None):
+def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_lm_vocab.pkl'):
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
+    # mimic3
+    # df = pd.read_csv(data,
+    #              header=0,
+    #              names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+    #              dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+    # mimic4
     df = pd.read_csv(data,
                  header=0,
-                 names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
-                 dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+                 usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+                 dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
-    # pdb.set_trace()
     lbl_freqs = Counter()
     for labels in df.labels: lbl_freqs.update(labels.split(';'))
     lbls = list(lbl_freqs.keys())
     splits = splitter(df)
-    lm_vocab = torch.load(source/'mimic3-9k_dls_lm_vocab.pkl')
+    # lm_vocab = torch.load(source/'mimic3-9k_dls_lm_vocab.pkl')
+    # import pdb; pdb.set_trace()
+    lm_vocab = torch.load(source/lm_vocab_file)
     x_tfms = [Tokenizer.from_df('text', n_workers=workers), attrgetter("text"), Numericalize(vocab=lm_vocab)]
     y_tfms = [ColReader('labels', label_delim=';'), MultiCategorize(vocab=lbls), OneHotEncode()]
     tfms = [x_tfms, y_tfms]
@@ -75,22 +82,22 @@ def get_dev_dl(source, data, bs, sl=16, workers=None):
                              before_batch=pad_input_chunk, num_workers=workers, device=default_device())
     return dev_dl
 
-def train_linear_attn(learn, epochs, lrs, lrs_sgdr, fit_sgdr=False):
+def train_linear_attn(learn, epochs, lrs, lrs_sgdr, wd_linattn, fit_sgdr=False):
     print("unfreezing the last layer...")
-    if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=lrs_sgdr[0][0], wd=0.01)
+    if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=lrs_sgdr[0][0], wd=wd_linattn[0])
     else:  learn.fit(epochs[0]+epochs[1], lr=lrs[0][0])
 
     print("unfreezing one LSTM...")
     learn.freeze_to(-2)
-    learn.fit(epochs[2], lr=lrs[2][0])
+    learn.fit(epochs[2], lr=lrs[2][0], wd=wd_linattn[1])
 
     print("unfreezing one more LSTM...")
     learn.freeze_to(-3)
-    learn.fit(epochs[3], lr=lrs[3][0])
+    learn.fit(epochs[3], lr=lrs[3][0], wd=wd_linattn[2])
 
     print("unfreezing the entire model...")
     learn.unfreeze()
-    learn.fit(epochs[4], lr=lrs[4][0], wd=0.3)
+    learn.fit(epochs[4], lr=lrs[4][0], wd=wd_linattn[3])
 
     print("Done!!!")
     print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
@@ -169,12 +176,15 @@ def _print_metrics(vals, learn):
 
 @call_parse
 def main(
+    source_url: Param("Source url", str)="XURLs.MIMIC3",
+    source_url_l2r: Param("Source url", str)="XURLs.MIMIC3_L2R",
     data:  Param("Filename of the raw data", str)="mimic3-9k",
     lr:    Param("base Learning rate", float)=1e-2,
     bs:    Param("Batch size", int)=16,
     epochs:Param("Number of epochs", str)="[10, 5, 5, 5, 10]",
     lrs:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
     lrs_sgdr:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    wd_linattn:Param("Weight decays for the gradual unfreezing", str)="[0.01, 0.01, 0.01, 0.3]",
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
     plant: Param("PLANT attention", bool_arg)=True,
@@ -190,39 +200,44 @@ def main(
     root_dir: Param("Root dir for saving models", str)="..",
     fname: Param("Save model file", str)="mimic3-9k",
     infer: Param("Don't train, just validate", int)=0,
-    metrics: Param("Metrics used in inference", str)="partial(precision_at_k, k=15)"
+    metrics: Param("Metrics used in inference", str)="partial(precision_at_k, k=15)",
+    files_lm: Param("MIMIC LM files (comma seperated fine-tuned lm, decoder, lm_vocab)", str)="mimic3-9k_lm_finetuned.pth,mimic3-9k_lm_decoder.pth,mimic3-9k_dls_lm_vocab.pkl",
+    files_l2r: Param("MIMIC L2R files (comma seperated)", str)="mimic3-9k_tok_lbl_info.pkl,p_L.pkl,lin_lambdarank_full.pth",
     # model_path: Param("Model path for validation", str)="mimic3-9k"
+
 ):
     "Training of mimic classifier."
 
-    source = rank0_first(untar_xxx, XURLs.MIMIC3)
-    source_l2r = rank0_first(untar_xxx, XURLs.MIMIC3_L2R)
+    source = rank0_first(untar_xxx, eval(source_url))
+    source_l2r = rank0_first(untar_xxx, eval(source_url_l2r))
 
     # make tmp directory to save and load models and dataloaders
     # pdb.set_trace()
     tmp = Path(root_dir)/'tmp/models'
     tmp.mkdir(exist_ok=True, parents=True)
     tmp = tmp.parent
-    files_mimic = 'mimic3-9k_lm_finetuned.pth mimic3-9k_lm_decoder.pth'.split(' ')
-    for f in files_mimic:
+    # files_mimic = 'mimic3-9k_lm_finetuned.pth mimic3-9k_lm_decoder.pth'.split(' ')
+    files_lm = files_lm.split(',')
+    for f in files_lm:
         if not (tmp/'models'/f).exists():
             (tmp/'models'/f).symlink_to(source/f) 
-    files_mimic_l2r = 'mimic3-9k_tok_lbl_info.pkl p_L.pkl lin_lambdarank_full.pth'.split(' ')
-    for f in files_mimic_l2r:
-        if not (tmp/'models'/f).exists():
-            (tmp/'models'/f).symlink_to(source_l2r/f) 
+    # files_mimic_l2r = 'mimic3-9k_tok_lbl_info.pkl p_L.pkl lin_lambdarank_full.pth'.split(' ')
+    # for f in files_mimic_l2r:
+    #     if not (tmp/'models'/f).exists():
+    #         (tmp/'models'/f).symlink_to(source_l2r/f) 
 
     # loading dataloaders
     dls_file = join_path_file(data+'_dls_clas_'+str(bs), tmp, ext='.pkl')
     if dls_file.exists(): 
         dls_clas = torch.load(dls_file, map_location=torch.device('cpu'))
     else:
-        dls_clas = get_dls(source, data, bs, workers=workers)
+        dls_clas = get_dls(source, data, bs, workers=workers, lm_vocab_file=files_lm[2])
         torch.save(dls_clas, dls_file)
 
     epochs = json.loads(epochs)
     lrs = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs)]
     lrs_sgdr = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_sgdr)]
+    wd_linattn = json.loads(wd_linattn)
     for run in range(runs):
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {sum(epochs)}; lr: {lr}; bs: {bs}')
@@ -247,7 +262,9 @@ def main(
 
         if dump: pr(learn.model); exit()
         if fp16: learn = learn.to_fp16()
-        if lm: learn = rank0_first(learn.load_encoder, 'mimic3-9k_lm_finetuned')
+        # if lm: learn = rank0_first(learn.load_encoder, 'mimic3-9k_lm_finetuned')
+        # import pdb; pdb.set_trace()
+        if lm: learn = rank0_first(learn.load_encoder, files_lm[0].split('.')[0])
         if plant: 
             learn = rank0_first(learn.load_both, 'mimic3-9k_tok_lbl_info', 'p_L', 'lin_lambdarank_full', 'mimic3-9k_lm_decoder')
             setattr(learn, 'splitter', awd_lstm_xclas_split)
@@ -280,5 +297,5 @@ def main(
         if wandblog: cms += L(wandb.init())
         with ContextManagers(cms):
             if plant: train_plant(learn, epochs, lrs, lrs_sgdr, fit_sgdr=fit_sgdr)
-            else: train_linear_attn(learn, epochs, lrs, lrs_sgdr, fit_sgdr=fit_sgdr)
+            else: train_linear_attn(learn, epochs, lrs, lrs_sgdr, wd_linattn, fit_sgdr=fit_sgdr)
 

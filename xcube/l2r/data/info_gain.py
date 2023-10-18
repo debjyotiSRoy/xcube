@@ -46,7 +46,7 @@ class MutualInfoGain:
                               device=default_device() if self.device is None else self.device))
         return self.dls
     
-    def _mutual_info_gain(self, dl):
+    def _mutual_info_gain(self, dl, parent_bar=None):
         """
         Computes [mutual information gain](https://en.wikipedia.org/wiki/Mutual_information) for each token label pair
         `dl` is (bag-of-words text, one-hot encoded targets)
@@ -55,7 +55,8 @@ class MutualInfoGain:
         toksize, lblsize = xb.size(1), yb.size(1)
         p_TL = torch.zeros(toksize, lblsize, 4, dtype=torch.float, device=default_device())
         eps = p_TL.new_empty(1).fill_(1e-8)
-        for x,y in dl:
+        pbar = progress_bar(dl, parent=parent_bar, leave=True)
+        for x,y in pbar:
             test_eq(x.shape, (dl.bs, toksize)); test_eq(y.shape, (dl.bs, lblsize))
             t = x.unsqueeze(-1).expand(-1, -1, lblsize) ; test_eq(t.shape, (dl.bs, toksize, lblsize))
             l = y.unsqueeze(1).expand(-1, toksize, -1) ; test_eq(l.shape, (dl.bs, toksize, lblsize))
@@ -70,9 +71,10 @@ class MutualInfoGain:
         return p_TL
     
     def joint_pmf(self):
-        self.p_TL_full = [] 
-        for dl in progress_bar(self.dls):
-            p_TL = self._mutual_info_gain(dl)
+        self.p_TL_full = []
+        mb = master_bar(self.dls)
+        for dl in mb:
+            p_TL = self._mutual_info_gain(dl,parent_bar=mb)
             self.p_TL_full.append(p_TL)
             del p_TL; #del p_T; del p_L; del p_TxL; del I_TL; torch.cuda.empty_cache()
         self.p_TL_full = torch.cat(self.p_TL_full, dim=1); test_eq(self.p_TL_full.shape, (self.toksize, self.lblsize, 2, 2))

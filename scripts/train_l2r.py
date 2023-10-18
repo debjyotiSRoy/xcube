@@ -123,7 +123,6 @@ def main(
     cms = L(learner.removed_cbs(learner.cbs[track_cb_idx]), learner.added_cbs(TrackResults(train_metrics=True, beta=0.98)))
     with ContextManagers(cms): 
         lrs = learner.xrl_find(num_it=300, suggest_funcs=(valley, slide, steep))
-
     
     # Training 
     learner.fit_one_cycle(1, lr_max=lrs.valley)

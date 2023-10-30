@@ -27,7 +27,7 @@ def splitter(df):
     valid = df.index[df['is_valid']].to_list()
     return train, valid
 
-def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_lm_vocab.pkl'):
+def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_lm_vocab.pkl', bwd=False):
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
     # mimic3
@@ -49,6 +49,7 @@ def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_
     # import pdb; pdb.set_trace()
     lm_vocab = torch.load(source/lm_vocab_file)
     x_tfms = [Tokenizer.from_df('text', n_workers=workers), attrgetter("text"), Numericalize(vocab=lm_vocab)]
+    if bwd : x_tfms = x_tfms + [reverse_text] 
     y_tfms = [ColReader('labels', label_delim=';'), MultiCategorize(vocab=lbls), OneHotEncode()]
     tfms = [x_tfms, y_tfms]
     dsets = Datasets(df, tfms, splits=splits)
@@ -58,6 +59,7 @@ def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_
                              before_batch=pad_input_chunk, num_workers=workers)
     return dls_clas
 
+# change dev_dl before using it
 def get_dev_dl(source, data, bs, sl=16, workers=None):
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
@@ -203,8 +205,8 @@ def main(
     metrics: Param("Metrics used in inference", str)="partial(precision_at_k, k=15)",
     files_lm: Param("MIMIC LM files (comma seperated fine-tuned lm, decoder, lm_vocab)", str)="mimic3-9k_lm_finetuned.pth,mimic3-9k_lm_decoder.pth,mimic3-9k_dls_lm_vocab.pkl",
     files_l2r: Param("MIMIC L2R files (comma seperated)", str)="mimic3-9k_tok_lbl_info.pkl,p_L.pkl,lin_lambdarank_full.pth",
-    # model_path: Param("Model path for validation", str)="mimic3-9k"
-
+    trn_frm_cpt: Param("Train from saved checkpoint", store_true)=False,
+    bwd: Param("Train the bwd classifier", store_true)=False
 ):
     "Training of mimic classifier."
 
@@ -227,11 +229,12 @@ def main(
     #         (tmp/'models'/f).symlink_to(source_l2r/f) 
 
     # loading dataloaders
-    dls_file = join_path_file(data+'_dls_clas_'+str(bs), tmp, ext='.pkl')
+    dls_name = '_dls_clas_bwd_' if bwd else '_dls_clas_' 
+    dls_file = join_path_file(data+dls_name+str(bs), tmp, ext='.pkl')
     if dls_file.exists(): 
         dls_clas = torch.load(dls_file, map_location=torch.device('cpu'))
     else:
-        dls_clas = get_dls(source, data, bs, workers=workers, lm_vocab_file=files_lm[2])
+        dls_clas = get_dls(source, data, bs, workers=workers, lm_vocab_file=files_lm[2], bwd=bwd)
         torch.save(dls_clas, dls_file)
 
     epochs = json.loads(epochs)
@@ -245,7 +248,7 @@ def main(
         cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
         if not infer and log: 
             logfname = join_path_file(fname, tmp, ext='.csv')
-            if logfname.exists(): logfname.unlink()
+            if not trn_frm_cpt and logfname.exists(): logfname.unlink() # don't delete if from training from chkpt
             cbs += L(CSVLogger(fname=logfname, append=True))
         if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
@@ -289,6 +292,19 @@ def main(
                 print("Exception:", e)
                 print("Trained model not found!")
             finally: exit()
+        if trn_frm_cpt:
+            try:
+                ic(learn.save_model.fname)
+                ic(learn.save_model.reset_on_fit)
+                assert learn.save_model.reset_on_fit is False
+                learn = learn.load(learn.save_model.fname)
+                print("Validating the checkpointed model so that we can run from where we left of...")
+                vals = validate(learn)
+                print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {vals[1]}")
+                learn.save_model.best = vals[1]
+            except FileNotFoundError as e: 
+                print("Exception:", e)
+                print("Checkpoint model not found!")
 
         # Workaround: In PyTorch 2.0.1 need to set DistributedDataParallel() with find_unused_parameters=True,
         # to avoid a crash that only happens in distributed mode of xmltext_clasifier_learner.fit()

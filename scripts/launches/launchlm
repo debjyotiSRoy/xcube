@@ -1,14 +1,21 @@
+fname="mimic4_icd10_lm"
+
 accelerate launch --mixed_precision=fp16 --num_processes=1 \
-    ../train_lm.py \
-    --data="mimic4_icd10_full" \
-    --fp16 \
-    --workers=16 \
-    --log \
-    --epochs="[1, 15]" \
-    --lrs="[1e-3, 1e-5]" \
-    --bs=384 \
-    --save_model \
-    --fname="mimic4_icd10_lm" \
-    --runs=1 \
-    --infer=0 \
-    --train_from_ckpt
+        train_lm.py \
+        --source_url="XURLs.MIMIC4" \
+        --data="mimic4_icd10_full" \
+        --fp16 \
+        --workers=16 \
+        --log \
+        --epochs="[1, 10]" \
+        --lrs="[1e-3, 1e-5]" \
+        --bs=384 \
+        --save_model \
+        --fname=$fname \
+        --runs=1 \
+        --infer=0 \
+        --bwd \
+        --train_from_ckpt
+
+echo "files created:"
+find ../tmp -name "$fname*" 

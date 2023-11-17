@@ -171,8 +171,8 @@ class L2RDataLoader(DataLoader):
         
         trn_sqs = map(partial(torch.chunk, chunks=self.lbs_chunks), trn_sqs)
         trn_sqs = itertools.chain.from_iterable(trn_sqs)
-        self.dset = trn_sqs
+        self.dset = trn_sqs # shape (size_of_one_lbs_chunk, sl, 4) 
     
     def create_batches(self, samps):
-        yield from (torch.stack(btch) for btch in self.chunkify(self.dset))
+        yield from (torch.stack(btch) for btch in self.chunkify(self.dset)) # batching bs many elems from self.dset
         

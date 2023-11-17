@@ -2,7 +2,8 @@
 
 # %% auto 0
 __all__ = ['TrainEval', 'AvgSmoothMetric', 'TrackResults', 'Monitor', 'XParamScheduler', 'XLRFinder', 'ProgressBarCallback',
-           'SaveCallBack']
+           'SaveCallBack', 'InterruptCallback', 'CSVLog', 'AMPMode', 'TestCallback', 'MemoryErrorTest',
+           'MixedPrecision', 'GradientClip']
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 2
 from fastai.torch_imports import *
@@ -54,10 +55,18 @@ class AvgSmoothMetric(Metric):
     def value(self): return self.val/(1-self.beta**self.count)
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 11
+from fastprogress.core import format_time  
+import time
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 12
 class TrackResults(Callback):
     def __init__(self, train_metrics=False, beta=0.98): 
         store_attr()
         self.names = ['loss', 'ndcg', 'ndcg_at_6', 'acc']
+        self.metric_names = L(self.names).map(lambda o: 'val_'+o)
+        if train_metrics: self.metric_names = L(self.names).map(lambda o: 'train_'+o) + self.metric_names
+        self.metric_names.append('time')
+        self.metric_names = L('epoch') + self.metric_names
         self.smooth_moi = AvgSmoothMetric(beta=beta) # to maintain weighted avg of metric of interest 
     
     def before_fit(self): 
@@ -75,13 +84,24 @@ class TrackResults(Callback):
         log = self._compute_epoch_mean()
         if self.train_metrics:
             self.metrics_full['trn'].append(log)
-        print(self.epoch, self.model.training, *log)
+        # print(self.epoch, self.model.training, *log)
+        self.log+=log
                 
     def after_validate(self):
         log = self._compute_epoch_mean()
         if hasattr(self, 'metrics_full'):
             self.metrics_full['val'].append(log)
-        print(self.epoch if hasattr(self, 'epoch') else 0, self.model.training, *log)
+        # print(self.epoch if hasattr(self, 'epoch') else 0, self.model.training, *log)
+        if getattr(self, 'log', False): self.log+=log
+
+    def before_epoch(self):
+        self.start_epoch = time.time()
+        self.log = L(getattr(self, 'epoch', 0))
+
+    def after_epoch(self): 
+        self.log.append(format_time(time.time() - self.start_epoch))
+        # import pdb; pdb.set_trace()
+        self.logger(self.log)
             
     def _compute_epoch_mean(self):
         _li = [self.losses, self.ndcgs, self.ndcgs_at_6, self.accs]
@@ -91,10 +111,13 @@ class TrackResults(Callback):
         return log
     
     def _initialise_metrics(self): self.losses, self.ndcgs, self.ndcgs_at_6, self.accs = [], [], [], []
+
     
     def after_batch(self):
         with torch.no_grad():
             loss = self.loss_func(self.preds, self.xb)
+            if loss.mean().isnan(): 
+                import pdb; pdb.set_trace()
             self.losses.append(loss.mean())
             if self.model.training:
                 if self.train_metrics: 
@@ -125,7 +148,7 @@ class TrackResults(Callback):
             grad = param.grad.data.detach().clone()
             self.grads_full[name].append(grad)
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 12
+# %% ../../nbs/11_l2r.callbacks.ipynb 13
 class Monitor(Callback):
     order = 60
     def __init__(self, monitor='ndcg_at_6', comp=None, min_delta=0., reset_on_fit=False):
@@ -140,11 +163,12 @@ class Monitor(Callback):
         self.idx = list(self.track_results.names).index(self.monitor)
         
     def after_epoch(self):
+        if self.track_results.metrics_full.get('val') is None: return 
         val = self.track_results.metrics_full.get('val')[-1][self.idx]
         if self.comp(val - self.min_delta if not isinstance(val, str) else self.best, self.best): self.best, self.new_best, = val, True
         else: self.new_best = False
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 14
+# %% ../../nbs/11_l2r.callbacks.ipynb 15
 @docs
 class XParamScheduler(Callback):
     "Schedule hyper-parameters according to `scheds`"
@@ -171,13 +195,13 @@ class XParamScheduler(Callback):
              "after_batch": "Record hyper-parameters of this batch",
              "after_fit": "Save the hyper-parameters in the track_results if there is one"}
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 20
+# %% ../../nbs/11_l2r.callbacks.ipynb 21
 from .learner import L2RLearner
 from fastai.callback.schedule import *
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 21
+# %% ../../nbs/11_l2r.callbacks.ipynb 22
 @patch
-def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5, pct_start=0.25, moms=None, cbs=None):
+def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5, pct_start=0.25, moms=None, cbs=None, start_epoch=0):
     "Fit `self.model` for `n_epoch` using the 1cycle policy."
     self.lr_max = lr_max
     self.opt = getattr(self, 'opt', None)
@@ -188,9 +212,9 @@ def fit_one_cycle(self:L2RLearner, n_epoch, lr_max=None, div=25., div_final=1e5,
               'mom': combined_cos(pct_start, *(self.moms if moms is None else moms))}
     # self.add_cb(XParamScheduler(scheds)) 
     # pdb.set_trace()
-    self.fit(n_epoch, cbs=XParamScheduler(scheds)+L(cbs))
+    self.fit(n_epoch, cbs=XParamScheduler(scheds)+L(cbs), start_epoch=start_epoch)
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 23
+# %% ../../nbs/11_l2r.callbacks.ipynb 24
 @patch
 def plot_sched(self:TrackResults, keys=None, figsize=None):
     keys = self.hps.keys() if keys is None else L(keys)
@@ -203,6 +227,22 @@ def plot_sched(self:TrackResults, keys=None, figsize=None):
         ax.set_ylabel(p)
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 25
+@patch
+def fit_sgdr(self:L2RLearner, n_cycles, cycle_len, lr_max=None, cycle_mult=2, cbs=None, reset_opt=False, wd=None,
+             start_epoch=0):
+    "Fit `self.model` for `n_cycles` of `cycle_len` using SGDR."
+    self.lr_max = lr_max
+    self.opt = getattr(self, 'opt', None)
+    if self.opt is None: self.create_opt()
+    self.opt.set_hyper('lr', self.lr if lr_max is None else lr_max)
+    lr_max = np.array([h['lr'] for h in self.opt.hypers])
+    n_epoch = cycle_len * (cycle_mult**n_cycles-1)//(cycle_mult-1)
+    pcts = [cycle_len * cycle_mult**i / n_epoch for i in range(n_cycles)]
+    scheds = [SchedCos(lr_max, 0) for _ in range(n_cycles)]
+    scheds = {'lr': combine_scheds(pcts, scheds)}
+    self.fit(n_epoch, cbs=ParamScheduler(scheds)+L(cbs), reset_opt=reset_opt, wd=wd, start_epoch=start_epoch)
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 28
 @docs
 class XLRFinder(XParamScheduler):
     "Training with exponentially growing learning rate"
@@ -252,7 +292,7 @@ class XLRFinder(XParamScheduler):
              "after_cancel_validate": "pass `CancelValidException`",
              "run_after":""}
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 26
+# %% ../../nbs/11_l2r.callbacks.ipynb 29
 @patch
 def plot_xlr_find(self:TrackResults, skip_end=5, return_fig=True, suggestions=None, nms=None, **kwargs):
     "Plot the result of an LR Finder test (won't work if you didn't do `learn.xlr_find()` before)"
@@ -274,7 +314,7 @@ def plot_xlr_find(self:TrackResults, skip_end=5, return_fig=True, suggestions=No
     ax2.legend(loc='best')
 
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 27
+# %% ../../nbs/11_l2r.callbacks.ipynb 30
 @patch
 def xrl_find(self:L2RLearner, start_lr=1e-5, end_lr=1e-1, num_it=400, stop_div=True, show_plot=True, suggest_funcs=(valley,)):
     "Launch a mock training to find a good learning rate and return suggestions based on `suggest_funcs` as a named tuple"
@@ -305,12 +345,18 @@ def xrl_find(self:L2RLearner, start_lr=1e-5, end_lr=1e-1, num_it=400, stop_div=T
     elif show_plot: self.track_results.plot_xlr_find()
         
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 29
+# %% ../../nbs/11_l2r.callbacks.ipynb 32
 class ProgressBarCallback(Callback):
     order = 70
     
     def before_fit(self):
         self.mbar = master_bar(range(self.n_epochs))
+        if self.learn.logger != noop:
+            self.old_logger,self.learn.logger = self.logger,self._write_stats
+            # metric_names = L(self.track_results.names).map(lambda o: 'train_'+o) + L(self.track_results.names).map(lambda o: 'val_'+o)
+            # metric_names.append('time')
+            # metric_names = L('epoch') + metric_names
+            self._write_stats(self.track_results.metric_names)
         
     def before_epoch(self):
         if getattr(self, 'mbar', False): self.mbar.update(self.epoch)
@@ -336,8 +382,15 @@ class ProgressBarCallback(Callback):
         if getattr(self, 'mbar', False):
             self.mbar.on_iter_end()
             delattr(self, 'mbar')
+        if hasattr(self, 'old_logger'): self.learn.logger = self.old_logger
 
-# %% ../../nbs/11_l2r.callbacks.ipynb 31
+    def _write_stats(self, log):
+        if getattr(self, 'mbar', False): self.mbar.write([f'{l:.6f}' if isinstance(l, float) else str(l) for l in log], table=True)
+    
+
+    
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 34
 class SaveCallBack(Monitor):
     order = Monitor.order+1
     def __init__(self, 
@@ -364,3 +417,145 @@ class SaveCallBack(Monitor):
     
     # def after_fit(self):
         # if self.best_at_end: self.learn.load(self.fname)
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 36
+class InterruptCallback(Callback):
+    def __init__(self, epoch):
+        self._interupt_before = epoch
+    def before_epoch(self):
+        if self.epoch == self._interupt_before:
+            raise CancelFitException
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 38
+class CSVLog(Callback):
+    "Log the results displayed in `learn.path/fname`"
+    order=60
+    def __init__(self, fname='history.csv', append=False):
+        self.fname,self.append = Path(fname),append
+
+    def read_log(self):
+        "Convenience method to quickly access the log."
+        return pd.read_csv(self.path/self.fname)
+
+    def before_fit(self):
+        "Prepare file with metric names."
+        import pdb; pdb.set_trace()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.file = (self.path/self.fname).open('a' if self.append else 'w')
+        self.file.write(','.join(self.track_results.metric_names) + '\n')
+        self.old_logger,self.learn.logger = self.logger,self._write_line
+
+    def _write_line(self, log):
+        "Write a line with `log` and call the old logger."
+        self.file.write(','.join([str(t) for t in log]) + '\n')
+        self.file.flush()
+        os.fsync(self.file.fileno())
+        self.old_logger(log)
+
+    def after_fit(self):
+        "Close the file and clean up."
+        self.file.close()
+        self.learn.logger = self.old_logger
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 40
+from torch.cuda.amp import GradScaler, autocast
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 41
+class AMPMode(Enum):
+    "Automatic mixed precision modes for ease of completion"
+    FP16 = 'fp16'
+    BF16 = 'bf16'
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 42
+class TestCallback(Callback):
+    order = 1000
+    def after_fit(self):
+        import pdb; pdb.set_trace()
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 43
+class MemoryErrorTest(Callback):
+    order=SaveCallBack.order-1
+    def after_batch(self):
+        if self.iter_num == 4:
+            # raise torch.cuda.OutOfMemoryError("Memory !!!")
+            raise CancelTrainException()
+    def after_cancel_train(self): pass
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 44
+@delegates(GradScaler)
+class MixedPrecision(Callback):
+    "Mixed precision training using Pytorch's Automatic Mixed Precision (AMP)"
+    order = 10
+    def __init__(self,
+        amp_mode:str|AMPMode=AMPMode.FP16, # Mixed Precision training mode. Supports fp16 and bf16.
+        **kwargs
+    ):
+        amp_mode = AMPMode(amp_mode)
+        store_attr(names='amp_mode')
+        self.kwargs = kwargs
+
+    def before_fit(self):
+        if self.amp_mode == AMPMode.BF16:
+            if torch.cuda.is_available() and not torch.cuda.is_bf16_supported():
+                raise ValueError("Unsupported GPU for bfloat16 mixed precision training")
+            dtype = torch.bfloat16
+        elif self.amp_mode == AMPMode.FP16:
+            dtype = torch.float16
+        else:
+            raise ValueError(f"Unrecognized precision: {self.amp_mode}")
+        # `GradScaler` is not needed for bfloat16 as fp32 and bf16 have the same range
+        self.kwargs['enabled'] = dtype == torch.float16
+        self.autocast,self.learn.scaler,self.scales = autocast(dtype=dtype), GradScaler(**self.kwargs),L()
+
+    def before_batch(self): 
+        if self.model.training: 
+            self.autocast.__enter__()
+    def after_pred(self):
+        pass
+        # assert self.learn.preds.dtype == torch.float16
+        # self.learn.preds = to_float(self.preds)
+    def after_loss(self): self.autocast.__exit__(None, None, None)
+    def before_backward(self): 
+        # pass
+        # import pdb; pdb.set_trace()
+        # self.learn.preds = self.scaler.scale(self.preds)
+        assert self.learn.preds.dtype == torch.float16
+        # assert self.learn.lambda_i.dtype == torch.float16
+        assert self.learn.srtd_preds.dtype == torch.float16
+        self.learn.srtd_preds = self.scaler.scale(self.srtd_preds)
+        # self.learn.lambda_i = self.scaler.scale(self.lambda_i)
+    # def after_backward(self):
+    #     print(self.track_results.grads_full['token_factors.weight']
+    #     import pdb; pdb.set_trace()
+    def before_step(self):
+        "Use `self` as a fake optimizer. `self.skipped` will be set to True `after_step` if gradients overflow."
+        self.skipped=True
+        self.scaler.step(self)
+        if self.skipped: raise CancelStepException()
+        self.scales.append(self.scaler.get_scale())
+        # pass
+    def after_step(self): self.learn.scaler.update()
+    def after_cancel_step(self): pass
+    def after_fit(self): self.autocast,self.learn.scaler,self.scales = None,None,None
+
+    @property
+    def param_groups(self):
+        "Pretend to be an optimizer for `GradScaler`"
+        return self.opt.param_groups
+    def step(self, *args, **kwargs):
+        "Fake optimizer step to detect whether this batch was skipped from `GradScaler`"
+        self.skipped=False
+    def after_epoch(self): 
+        torch.cuda.empty_cache()
+    def after_batch(self): 
+        torch.cuda.empty_cache()
+
+# %% ../../nbs/11_l2r.callbacks.ipynb 47
+class GradientClip(Callback):
+    "Clip norm of gradients"
+    order=MixedPrecision.order+1
+    def __init__(self,max_norm:float=1., norm_type:float=2.0): store_attr()
+    def before_step(self): 
+        # import pdb; pdb.set_trace()
+        nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm, self.norm_type)
+   

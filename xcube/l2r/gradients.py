@@ -78,29 +78,31 @@ def rank_loss2(preds, xb, sigma=0.5, lambrank=False, gain_fn=None, k=6):
 # %% ../../nbs/08_l2r.gradients.ipynb 10
 def rank_loss3(preds, xb, sigma=0.5, lambrank=False, gain_fn=None, k=6):
     with torch.no_grad():
-        # pdb.set_trace()
         x = xb[:, :, :, -1, None]
         x_t = xb[:, :, :, -1, None].transpose(-1,-2)
         preds_t = preds.transpose(-1,-2)
         preds_rank = preds[:, :, :, 0].argsort(dim=-1, descending=True).argsort(dim=-1).unsqueeze(-1)
         preds_rank_t = preds_rank.transpose(-1,-2)
         
-        exp_ij= 1.0 + torch.exp(sigma* (preds - preds_t))
+        exp_ij= 1.0 + torch.exp(sigma* (preds - preds_t)).half()
         rel_diff = x - x_t
         gain_diff = torch.pow(2.0, x) - torch.pow(2.0, x_t) if gain_fn == 'exp' else torch.pow(x, 3.0) - torch.pow(x_t, 3.0)
         decay_diff = 1.0/torch.log2(preds_rank + 2.0) - 1.0/torch.log2(preds_rank_t  + 2.0)
         idcg, idcg_at_k = _idcg(xb, k=k, gain_fn=gain_fn)
         idcg_at_k = idcg_at_k[..., None, None]
         # pdb.set_trace()
-        delta_ndcg_at_k = torch.abs(gain_diff * decay_diff * 1/idcg_at_k)
-        pos_pairs = (rel_diff > 0).float()
-        neg_pairs = (rel_diff < 0).float()
-        S_ij = pos_pairs - neg_pairs
-        lambda_update = sigma * (  0.5 * (1 - S_ij) -  1/exp_ij )
+        delta_ndcg_at_k = torch.abs(gain_diff * decay_diff * 1/idcg_at_k).half()
+        pos_pairs = (rel_diff > 0).to(torch.int8) #pos_pairs = (rel_diff > 0).float()
+        neg_pairs = (rel_diff < 0).to(torch.int8) #neg_pairs = (rel_diff < 0).float()
+        # pdb.set_trace()
+        S_ij = pos_pairs - neg_pairs # S_ij = (pos_pairs - neg_pairs).half()
+        lambda_update = sigma * (  0.5 * (1 - S_ij) -  (1/exp_ij.half()) )
         if lambrank: lambda_update *= delta_ndcg_at_k 
         lambda_update = lambda_update.sum(dim=-1, keepdim=True)
         # free memory
-        del preds_t, preds_rank, preds_rank_t, exp_ij, rel_diff, gain_diff, decay_diff, idcg, idcg_at_k, delta_ndcg_at_k, pos_pairs, neg_pairs, S_ij
+        # del preds_t, preds_rank, preds_rank_t, exp_ij, rel_diff, gain_diff, decay_diff, idcg, idcg_at_k, delta_ndcg_at_k, pos_pairs, neg_pairs, S_ij
+        exp_ij, rel_diff, gain_diff, decay_diff, idcg, idcg_at_k, delta_ndcg_at_k, pos_pairs, neg_pairs, S_ij = None, None, None, None, None, None, None, None, None, None
+        # S_ij = None
         import gc; gc.collect(); torch.cuda.empty_cache()
     return preds, lambda_update
 

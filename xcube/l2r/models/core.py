@@ -35,9 +35,13 @@ class L2R_DotProductBias(nn.Module):
         lbs_shape = lbs_embs.shape
         lbs_embs = lbs_embs.view(-1, *lbs_shape[2:]).unsqueeze(dim=-1) # shape (64*2233, 400, 1)
         
-        res = torch.bmm(toks_embs, lbs_embs) # shape (64*2233, 64, 1)
-        # res = torch.matmul(toks_embs, lbs_embs)
-        res = res.view(toks_shape[0], toks_shape[1], *res.shape[1:]) + self.token_bias(xb_toks) + self.label_bias(xb_lbs).unsqueeze(2) # shape (64, 2233, 64, 1)
+        # res = torch.bmm(toks_embs, lbs_embs) # shape (64*2233, 64, 1)
+        # res = res.view(toks_shape[0], toks_shape[1], *res.shape[1:]) + self.token_bias(xb_toks) + self.label_bias(xb_lbs).unsqueeze(2) # shape (65, 2233, 64, 1)
+
+        bias = self.token_bias(xb_toks) + self.label_bias(xb_lbs).unsqueeze(2) # (bs, lbs_in_one_chunk, sl, 1)
+        bias = bias.view(-1, *bias.shape[2:]) # (bs*lbs_in_one_chunk, sl, 1)
+        res = torch.baddbmm(bias, toks_embs, lbs_embs) # toks_embs: (bs*lbs_in_one_chunk, sl, emb_sz), lbs_embs: (bs*lbs_in_one_chunk, emb_sz, 1), res : (bs*lbs_in_one_chunk, sl, 1)
+        res = res.view(toks_shape[0], toks_shape[1], *res.shape[1:]) # res (bs, lbs_in_one_chunk, sl, 1)
         
         return sigmoid_range(res, *self.y_range) if self.y_range is not None else res
         # return res

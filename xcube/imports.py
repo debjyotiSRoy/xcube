@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import itertools
 from pathlib import Path
+from enum import Enum
 from collections import OrderedDict,defaultdict,Counter,namedtuple
 from contextlib import suppress
 import json

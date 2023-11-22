@@ -1,0 +1,1 @@
+./run_scripts.sh --script_list_file script_list_mimic4_icd10_test --infer --output_file "../tmp/mimic4_icd10_metrics.csv"

@@ -60,24 +60,32 @@ def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_
     return dls_clas
 
 # change dev_dl before using it
-def get_dev_dl(source, data, bs, sl=16, workers=None):
+def get_dev_dl(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_lm_vocab.pkl', bwd=False):
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
+    # mimic3
+    # df = pd.read_csv(data,
+    #              header=0,
+    #              names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+    #              dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+    # mimic4
     df = pd.read_csv(data,
                  header=0,
-                 names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
-                 dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+                 usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+                 dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
     # pdb.set_trace()
     lbl_freqs = Counter()
     for labels in df.labels: lbl_freqs.update(labels.split(';'))
     lbls = list(lbl_freqs.keys())
     splits = splitter(df)
-    lm_vocab = torch.load(source/'mimic3-9k_dls_lm_vocab.pkl')
+    lm_vocab = torch.load(source/lm_vocab_file)
     x_tfms = [Tokenizer.from_df('text', n_workers=workers), attrgetter("text"), Numericalize(vocab=lm_vocab)]
     y_tfms = [ColReader('labels', label_delim=';'), MultiCategorize(vocab=lbls), OneHotEncode()]
     tfms = [x_tfms, y_tfms]
-    dev_dset = Datasets(df[df['split']=='dev'], tfms)
+    val_split_name = 'val' if 'val' in df['split'].unique() else 'dev'
+    if val_split_name != ('val' or 'dev'): raise ValueError("The split field of the dataframe doesnot contain 'val' or 'dev'")
+    dev_dset = Datasets(df[df['split']==val_split_name], tfms)
     dl_type = partial(SortedDL, shuffle=True)
     dev_dl = TfmdDL(dev_dset, bs=bs, seq_len=sl,
                              dl_type=dl_type,
@@ -162,7 +170,9 @@ def compute_val2(met, dl, learn, pred, targ):
 
 class CancelValid(Callback):
     order = 100
-    def before_validate(self): raise CancelValidException()
+    def before_validate(self): 
+        import pdb; pdb.set_trace()
+        raise CancelValidException()
 
 def _print_metrics(vals, learn):
     print(f"test_loss = {vals[0]}")
@@ -224,9 +234,10 @@ def main(
         if not (tmp/'models'/f).exists():
             (tmp/'models'/f).symlink_to(source/f) 
     # files_mimic_l2r = 'mimic3-9k_tok_lbl_info.pkl p_L.pkl lin_lambdarank_full.pth'.split(' ')
-    # for f in files_mimic_l2r:
-    #     if not (tmp/'models'/f).exists():
-    #         (tmp/'models'/f).symlink_to(source_l2r/f) 
+    files_l2r = files_l2r.split(',')
+    for f in files_l2r:
+        if not (tmp/'models'/f).exists():
+            (tmp/'models'/f).symlink_to(source_l2r/f) 
 
     # loading dataloaders
     dls_name = '_dls_clas_bwd_' if bwd else '_dls_clas_' 
@@ -267,25 +278,30 @@ def main(
         if fp16: learn = learn.to_fp16()
         # if lm: learn = rank0_first(learn.load_encoder, 'mimic3-9k_lm_finetuned')
         # import pdb; pdb.set_trace()
-        if lm: learn = rank0_first(learn.load_encoder, files_lm[0].split('.')[0])
+        if lm: learn = rank0_first(learn.load_encoder, files_lm[0].split('.')[0]) # change for bwd
         if plant: 
-            learn = rank0_first(learn.load_both, 'mimic3-9k_tok_lbl_info', 'p_L', 'lin_lambdarank_full', 'mimic3-9k_lm_decoder')
+            # 'tok_lbl_info', 'p_L', 'lin_lambdarank', 'lm_decoder'
+            brain = L(*files_l2r, files_lm[1]).map(lambda o: o.split('.')[0])
+            # learn = rank0_first(learn.load_both, 'mimic3-9k_tok_lbl_info', 'p_L', 'lin_lambdarank_full', 'mimic3-9k_lm_decoder')
+            learn = rank0_first(learn.load_both, *brain)
             setattr(learn, 'splitter', awd_lstm_xclas_split)
             learn.create_opt()
         if infer:
             learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
-            dev_dl = get_dev_dl(source, data, bs, workers=workers)
+            dev_dl = get_dev_dl(source, data, bs, workers=workers, lm_vocab_file=files_lm[2], bwd=bwd)
             try: 
                 learn = learn.load(learn.save_model.fname)
                 # validate(learn, dl=dev_dl)
                 pred, targ = learn.get_preds(dl=dev_dl)
-                xs = torch.linspace(0.05, 0.95, 30)
-                f1_macros = [compute_val(F1ScoreMulti(thresh=i, average='macro', sigmoid=False), pred, targ, bs=bs) for i in xs]
-                f1_micros =  [compute_val(F1ScoreMulti(thresh=i, average='micro', sigmoid=False), pred, targ, bs=bs) for i in xs]
-                thresh_macro = xs[f1_macros.index(max(f1_macros))]
-                thresh_micro = xs[f1_micros.index(max(f1_micros))]
-                learn.metrics += F1ScoreMulti(thresh=thresh_macro, average='macro')
-                learn.metrics += F1ScoreMulti(thresh=thresh_micro, average='micro')
+                # now comment
+                # xs = torch.linspace(0.05, 0.95, 30)
+                # f1_macros = [compute_val(F1ScoreMulti(thresh=i, average='macro', sigmoid=False), pred, targ, bs=bs) for i in xs]
+                # f1_micros =  [compute_val(F1ScoreMulti(thresh=i, average='micro', sigmoid=False), pred, targ, bs=bs) for i in xs]
+                # thresh_macro = xs[f1_macros.index(max(f1_macros))]
+                # thresh_micro = xs[f1_micros.index(max(f1_micros))]
+                # learn.metrics += F1ScoreMulti(thresh=thresh_macro, average='macro')
+                # learn.metrics += F1ScoreMulti(thresh=thresh_micro, average='micro')
+                # now comment
                 vals = validate(learn)
                 _print_metrics(vals, learn)
             except FileNotFoundError as e: 

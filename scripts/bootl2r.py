@@ -138,6 +138,7 @@ def main(
     torch.topk(I_TL.flatten(), 10, largest=False)
     torch.save(p_TL, tmp/'p_TL.pkl'); generated_files.append(tmp/'p_TL.pkl')
     torch.save((p_T, p_L, p_TxL, H_T, H_L, I_TL), tmp/'info.pkl'); generated_files.append(tmp/'info.pkl')
+    torch.save(p_L, tmp/'p_L.pkl'); generated_files.append(tmp/'p_L.pkl')
     eps = I_TL.new_empty(1).fill_(1e-15)
     info_lbl_entropy = I_TL/(H_L + eps)
     info_jaccard = I_TL/(H_T.unsqueeze(-1) + H_L.unsqueeze(0) - I_TL + eps)

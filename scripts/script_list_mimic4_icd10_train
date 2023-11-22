@@ -1,0 +1,3 @@
+launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25_plant --plant
+launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25
+

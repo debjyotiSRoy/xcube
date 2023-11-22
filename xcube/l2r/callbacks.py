@@ -439,7 +439,6 @@ class CSVLog(Callback):
 
     def before_fit(self):
         "Prepare file with metric names."
-        import pdb; pdb.set_trace()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.file = (self.path/self.fname).open('a' if self.append else 'w')
         self.file.write(','.join(self.track_results.metric_names) + '\n')

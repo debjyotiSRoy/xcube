@@ -142,7 +142,6 @@ def main(
         if not trn_frm_cpt and logfname.exists(): logfname.unlink()
         learner_params['cbs'] += L(CSVLog(fname=logfname, append=True))
     print("Creating Learner...")
-    import pdb; pdb.set_trace()
     learner = get_learner(model, dls_l2r, **learner_params, path=tmp)
     ic(learner_params)
 

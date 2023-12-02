@@ -15,21 +15,21 @@ echo "fname is: $fname"
 echo "model_algo is: $model_algo"
 
 export OMP_NUM_THREADS=4
-# accelerate launch --mixed_precision=fp16 --num_processes=1 \
-python -m pdb \
+# python -m pdb \
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     train_l2r.py \
                                     --source_url="XURLs.MIMIC4_L2R" \
                                     --data="mimic4_icd10_tok_lbl" \
-                                    --epochs=20 \
+                                    --epochs=10 \
                                     --bs=64 \
                                     --lbs_chunks=4 \
                                     --sl=64 \
-                                    --lr=3e-2 \
+                                    --lr=7e-5 \
                                     --model_algo=$model_algo \
                                     --emb_sz=400 \
                                     --fname=$fname \
                                     --track_train \
-                                    --infer=0 \
+                                    --infer=1 \
                                     --log \
                                     --trn_frm_cpt
 echo "files created:"

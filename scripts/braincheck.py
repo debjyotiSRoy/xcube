@@ -21,12 +21,12 @@ def get_description(codes):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
     }
-    for code in codes:
-        url_cm = f"https://icd10coded.com/cm/{code}"
-        url_pcs = f"https://icd10coded.com/pcs/{code}"
-        
-        for url in (url_pcs, url_cm):   
-            with requests.Session() as session:
+    with requests.Session() as session:
+        for code in codes:
+            url_cm = f"https://icd10coded.com/cm/{code}"
+            url_pcs = f"https://icd10coded.com/pcs/{code}"
+            
+            for url in (url_pcs, url_cm):   
                 with session.get(url, headers=headers, timeout=5) as response:
                     if response.status_code == 200:
                         soup = BeautifulSoup(response.content, 'html.parser')
@@ -83,7 +83,7 @@ def main(
     test_shuffled(xml_vocab[1], brain_vocab[1])
     print("Performing Static Brainsplant...")
     xml_brain, xml_lbsbias, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain = brainsplant(xml_vocab, brain_vocab, brain, brain_bias)
-    some_lbs = random.sample(lbs, 5)
+    some_lbs = random.sample(lbs, 10)
     stripped_codes = [''.join(filter(str.isalnum, s)) for s in some_lbs]
     _map = dict(zip(some_lbs, stripped_codes))
     desc = get_description(stripped_codes)

@@ -10,6 +10,14 @@ parse_params() {
                 plant=true
                 shift
                 ;;
+            -d|--diff_inattn)
+                diff_inattn="$2"
+                shift 2
+                ;;
+            -l|--l2r_sgdr_lr0)
+                l2r_sgdr_lr0="$2"
+                shift 2
+                ;; 
             -i|--infer)
                 if [[ "$2" == "0" || "$2" == "1" ]]; then
                     infer="$2"  # Assign the value of the next argument to the 'infer' variable

@@ -154,9 +154,9 @@ def inattention(self:Tensor, k=None, sort_dim=0, sp_dim=0):
     if len(k_slice) == 1: k_slice=k_slice[0]
     # rep[sort_dim] = self.size(sort_dim)
     kth_largest = split_sort(self, sp_dim=sp_dim, sort_dim=sort_dim, descending=True)[k_slice].unsqueeze(dim=sort_dim)#.repeat(*rep)
-    clone = self.detach().clone()
-    clone[clone < kth_largest] = 0.
-    return clone
+    # [This line wasted 6 months of deb's life :(] clone = self.detach().clone()
+    self[self < kth_largest] = 0.
+    return self
 
 # %% ../nbs/01_layers.ipynb 51
 from .utils import *
@@ -164,7 +164,7 @@ from .utils import *
 # %% ../nbs/01_layers.ipynb 52
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
-    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1), attn_damps=(1, 1, 1)):
+    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1), attn_damps=(1, 1, 1), static_inattn=5, diff_inattn=30):
         store_attr('n_lbs,emb_sz,embed_p,plant')
         self.lbs = Embedding(n_lbs, emb_sz)
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
@@ -179,6 +179,8 @@ class XMLAttention(Module):
         # self.k = nn.Parameter(torch.normal(mean=torch.tensor(30.0), std=0.01))
         self.compress = nn.Linear(3*emb_sz, 400)
         init_default(self.compress)
+        self.static_inattn = static_inattn
+        self.diff_inattn = diff_inattn
     
     @property
     def attn(self): return self._attn
@@ -200,12 +202,17 @@ class XMLAttention(Module):
             return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
         elif self.attn.func.f is _diffntble_planted_attention: 
             
-            top_tok_splant_attn_wgts =  self.plant_attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=15, sort_dim=1)
+            # import pdb; pdb.set_trace()
+            top_tok_splant_attn_wgts =  self.plant_attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=self.static_inattn, sort_dim=1)
+            lbs_cf = None
+            # lbs_cf = self.plant_attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=10, sort_dim=-1).sum(dim=1).inattention(k=15, sort_dim=-1) #shape (bs, n_lbs)
             
             top_tok_lin_attn_wgts = self.lin_attn(sentc).softmax(dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
             # change
             # import pdb; pdb.set_trace()
-            top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=30, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            
+            top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=self.diff_inattn, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            
             # top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=self.k.int().item(), sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
             # top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
             # top_tok_plant_attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0).inattention(k=30, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
@@ -217,15 +224,20 @@ class XMLAttention(Module):
             top_tok_attn_wgts = self.wgts[0]*top_tok_lin_attn_wgts + self.wgts[1]*top_tok_plant_attn_wgts + self.wgts[2]*top_tok_splant_attn_wgts
             # import pdb; pdb.set_trace()
             # top_tok_attn_wgts = self.damps[0]*self.wgts[0]*top_tok_lin_attn_wgts + self.damps[1]*self.wgts[1]*top_tok_plant_attn_wgts + self.damps[2]*self.wgts[2]*top_tok_splant_attn_wgts
-            lbs_cf = None
+            # lbs_cf = None
 
             lin_comb_lin = lincomb(sentc, wgts=top_tok_lin_attn_wgts.transpose(1,2))
             lin_comb_plant = lincomb(sentc, wgts=top_tok_plant_attn_wgts.transpose(1,2))
             lin_comb_splant = lincomb(sentc, wgts=top_tok_splant_attn_wgts.transpose(1,2))
-            lin_comb_lin_plant = self.compress(torch.cat((lin_comb_lin, lin_comb_plant, lin_comb_splant), dim=-1)).relu()
+            # lin_comb_lin_plant = self.compress(torch.cat((lin_comb_lin, lin_comb_plant, lin_comb_splant), dim=-1)).relu()
+            lin_comb_lin_plant = lin_comb_lin + lin_comb_plant + lin_comb_splant
             # import pdb; pdb.set_trace()
 
             # lin_comb_lin_plant = lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2))
+            # lin_comb_lin_plant = lin_comb_plant
+
+
+
             return lin_comb_lin_plant, top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
             
         # return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

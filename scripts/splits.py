@@ -33,9 +33,10 @@ def main(
     files = [source/('_'.join(data.split('_')[:-1])+'_' + str(o) + '.csv') for o in train_splits]
     print(train_splits)
     print(files)
+    # import pdb; pdb.set_trace()
     for splt,file in zip(train_splits, files):
-        df_sample = df[~df['is_valid']].sample(n=splt)
+        df_sample = df[~df['is_valid']].sample(n=splt, random_state=88)
         print(f"{file = }, instances per label = {np.mean(lbs_freqs(df_sample))}")
         df_sample = pd.concat((df_sample, df[df['is_valid']]))
         df_sample.to_csv(file, index=False)
-    import IPython; IPython.embed()
+    # import IPython; IPython.embed()

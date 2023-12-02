@@ -4,11 +4,11 @@
 source param_parser.sh
 
 # Initialize parameters with default values
-fname="mimic4_icd10_clas_50"
+fname="mimic4_icd10_clas_18513"
 plant=false
 infer=0
 diff_inattn=40
-l2r_sgdr_lr0=1e-1
+l2r_sgdr_lr0=8e-1
 
 # Parse named parameters
 parse_params "$@"
@@ -30,7 +30,7 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     train.py \
                                     --source_url="XURLs.MIMIC4" \
                                     --source_url_l2r="XURLs.MIMIC4_L2R" \
-                                    --data="mimic4_icd10_50" \
+                                    --data="mimic4_icd10_18513" \
                                     --rarecodes_fname="mimic4_icd10_rarecodes" \
                                     --files_lm="mimic4_icd10_lm_finetuned.pth,mimic4_icd10_lm_decoder.pth,mimic4_icd10_dls_lm_vocab.pkl" \
                                     --files_l2r="mimic4_icd10_tok_lbl_info.pkl,mimic4_icd10_p_L.pkl,mimic4_icd10_l2r_lin_lambdarank.pth" \
@@ -43,7 +43,8 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --lrs_linattn="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --lrs_plant="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --fit_sgdr \
-                                    --sgdr_n_cycles=3 \
+                                    --unfreeze_l2r \
+                                    --sgdr_n_cycles=1 \
                                     --lrs_sgdr_linattn="[(0.8,$l2r_sgdr_lr0), (0.8,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --lrs_sgdr_plant="[(0.8,$l2r_sgdr_lr0), (0.8,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --wd_linattn="[0.01, 0.01, 0.01, 0.3]" \

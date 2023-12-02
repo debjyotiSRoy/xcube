@@ -1,1 +1,2 @@
-launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25 --infer 1
+launch_49579_mimic4_icd10 --fname mimic4_icd10_clas_49579 --infer 1
+

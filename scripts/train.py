@@ -22,6 +22,52 @@ def after_batch(self: ProgressCallback):
         mets = ('_valid_mets', '_train_mets')[self.training]
         self.pbar.comment = ' '.join([f'{met.name} = {met.value.item():.4f}' for met in getattr(self.recorder, mets)])
 
+@patch
+def after_pred(self: RNNCallback): 
+    "Save the raw and dropped-out outputs and only keep the true output for loss computation"
+    self.learn.pred,self.raw_out,self.out, _ = [o[-1] if is_listy(o) else o for o in self.pred]
+
+class TestCallback(Callback):
+    order = 1000 
+
+    def before_backward(self):
+        import pdb; pdb.set_trace()
+    def after_backward(self):
+        import pdb; pdb.set_trace()    
+    def before_step(self):
+        import pdb; pdb.set_trace()
+    def after_step(self):
+        import pdb; pdb.set_trace()
+
+class RarePrecisionCallback(Callback):
+    order=Recorder.order-1
+    def __init__(self, rare_codes_fname):
+        self.rare_codes = load_pickle(rare_codes_fname)
+    def before_validate(self):
+        # import pdb; pdb.set_trace()
+        rare_idxs = mapt(self.dls.vocab[1].o2i.get, self.rare_codes)
+        rare_prec = partial(rareprecision_at_k, rare_idxs=rare_idxs)
+        self.learn.metrics += mk_metric(rare_prec)
+    # def after_batch(self):
+    #     if self.training: return
+    #     import pdb; pdb.set_trace()
+
+class ShortEpochCallback(Callback):
+    "Fit just `pct` of an epoch, then stop"
+    order=Recorder.order+1
+    def __init__(self,pct=0.01,short_valid=True): self.pct,self.short_valid = pct,short_valid
+    def after_batch(self):
+        if self.iter/self.n_iter < self.pct: return
+        if self.training:    raise CancelTrainException
+        if self.short_valid: raise CancelValidException
+    def after_cancel_train(self):
+        if getattr(self.recorder, 'cancel_train', True):
+            setattr(self.recorder, 'cancel_train', False)
+    # def after_cancel_validate(self):
+    #     import pdb; pdb.set_trace()
+    #     if getattr(self.recorder, 'cancel_valid', True):
+    #         setattr(self.recorder, 'cancel_valid', False)
+
 def splitter(df):
     train = df.index[~df['is_valid']].tolist()
     valid = df.index[df['is_valid']].to_list()
@@ -92,60 +138,74 @@ def get_dev_dl(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_d
                              before_batch=pad_input_chunk, num_workers=workers, device=default_device())
     return dev_dl
 
-def train_linear_attn(learn, epochs, lrs, lrs_sgdr, wd_linattn, fit_sgdr=False):
-    print("unfreezing the last layer...")
-    if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=lrs_sgdr[0][0], wd=wd_linattn[0])
-    else:  learn.fit(epochs[0]+epochs[1], lr=lrs[0][0])
+def train_linear_attn(learn, epochs, lrs, lrs_sgdr, wd_linattn, fit_sgdr=False, sgdr_n_cycles=4):
+    if epochs[0] or epochs[1]:
+        print("unfreezing the last layer...")
+        if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=lrs_sgdr[0][0], wd=wd_linattn[0])
+        else:  learn.fit(epochs[0]+epochs[1], lr=lrs[0][0])
 
-    print("unfreezing one LSTM...")
-    learn.freeze_to(-2)
-    learn.fit(epochs[2], lr=lrs[2][0], wd=wd_linattn[1])
+    if epochs[2]:
+        print("unfreezing one LSTM...")
+        learn.freeze_to(-2)
+        learn.fit(epochs[2], lr=lrs[2][0], wd=wd_linattn[1])
 
-    print("unfreezing one more LSTM...")
-    learn.freeze_to(-3)
-    learn.fit(epochs[3], lr=lrs[3][0], wd=wd_linattn[2])
+    if epochs[3]:
+        print("unfreezing one more LSTM...")
+        learn.freeze_to(-3)
+        learn.fit(epochs[3], lr=lrs[3][0], wd=wd_linattn[2])
 
-    print("unfreezing the entire model...")
-    learn.unfreeze()
-    learn.fit(epochs[4], lr=lrs[4][0], wd=wd_linattn[3])
-
-    print("Done!!!")
-    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
-
-def train_plant(learn, epochs, lrs, lrs_sgdr, fit_sgdr=False):
-    print("unfreezing the last layer and pretrained l2r...")
-    learn.freeze_to(-2) # unfreeze the clas decoder and the l2r
-    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
-    wd=5
-    if fit_sgdr: learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[0][1], lrs_sgdr[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #rare
-    else: learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
-    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
-
-    print("unfreezing the LM decoder...")
-    learn.freeze_to(-3) # unfreeze the lm decoder
-    # learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], 0.15], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
-
-    print("unfreezing one LSTM...")
-    learn.freeze_to(-4) # unfreeze one LSTM
-    # learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], lrs[2][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], 0.15], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
-
-    print("unfreezing one more LSTM...")
-    learn.freeze_to(-5) # unfreeze one more LSTM
-    # learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], lrs[3][0]], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], 0.15], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01])
-    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
-
-    print("unfreezing the entire model...")
-    learn.unfreeze() # unfreeze the rest
-    learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[4][1], lrs[4][0]], wd=[0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])
+    if epochs[4]:
+        print("unfreezing the entire model...")
+        learn.unfreeze()
+        learn.fit(epochs[4], lr=lrs[4][0], wd=wd_linattn[3])
 
     print("Done!!!")
-    print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+    # print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+
+def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=False, unfreeze_l2r=False,sgdr_n_cycles=4):
+    # import pdb; pdb.set_trace()
+    if epochs[0]: # unfreeze the clas decoder and the l2r
+        print("unfreezing the last layer and potentially the pretrained l2r...")
+        learn.freeze_to(-2 if unfreeze_l2r else -1) 
+        # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
+        ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
+        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
+        ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
+        ic(lrs_sgdr)
+        if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[0][1], lrs_sgdr[0][0]], wd=wd_mul_plant[0]*array(wd_plant), ) #rare
+        else: learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=wd_mul_plant[0]*array(wd_plant))
+        # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-2, 0.6], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #tiny
+        # print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+        # print(learn.opt.hypers)
+
+    if epochs[1]: # unfreeze the lm decoder
+        print("unfreezing the LM decoder...")
+        learn.freeze_to(-3) 
+        if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[1][1], lrs_sgdr[1][0]], wd=wd_mul_plant[1]*array(wd_plant))
+        else: learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=wd_mul_plant[1]*array(wd_plant))
+        print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+
+    if epochs[2]: # unfreeze one LSTM
+        print("unfreezing one LSTM...")
+        learn.freeze_to(-4) 
+        learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], lrs[2][0]], wd=wd_mul_plant[2]*array(wd_plant))
+        # learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], 0.15], wd=wd_mul_plant[2]*array(wd_plant))
+        print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+
+    if epochs[3]: # unfreeze one more LSTM
+        print("unfreezing one more LSTM...")
+        learn.freeze_to(-5) 
+        learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], lrs[3][0]], wd=[0.3]*7)
+        # learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[3][1], lrs_sgdr[3][0]], wd=[0.3]*7)
+        print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+
+    if epochs[4]: # unfreeze the rest
+        print("unfreezing the entire model...")
+        learn.unfreeze() 
+        learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[4][1], lrs[4][0]], wd=wd_mul_plant[4]*array(wd_plant))
+
+    print("Done!!!")
+    # print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
 @delegates()
 class TstLearner(Learner):
@@ -191,16 +251,25 @@ def main(
     source_url: Param("Source url", str)="XURLs.MIMIC3",
     source_url_l2r: Param("Source url", str)="XURLs.MIMIC3_L2R",
     data:  Param("Filename of the raw data", str)="mimic3-9k",
+    rarecodes_fname: Param("Filename of the rare codes", str)="xxx",
     lr:    Param("base Learning rate", float)=1e-2,
     bs:    Param("Batch size", int)=16,
     epochs:Param("Number of epochs", str)="[10, 5, 5, 5, 10]",
-    lrs:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
-    lrs_sgdr:   Param("lr of the last layer and lm decoder for gradual unfreezing", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    lrs_linattn:   Param("Learning rates for gradual unfreezing of the layers in linear attention", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    lrs_plant:   Param("Learning rates of the last layer and lm decoder for gradual unfreezing in plant", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    lrs_sgdr_linattn:   Param("Learning rates for gradual unfreezing of the layers in linear attention with sgd", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
+    lrs_sgdr_plant:   Param("Learning rates of the last layer and lm decoder for gradual unfreezing in plant with sgd", str)="[(3e-2,1e-3), (1e-2,1e-3), (1e-2, 1e-3), (1e-2,1e-3), (1e-6,1e-6)]",
     wd_linattn:Param("Weight decays for the gradual unfreezing", str)="[0.01, 0.01, 0.01, 0.3]",
+    wd_plant:Param("Discriminative weight decays", str)="[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]",
+    wd_mul_plant:Param("Multipliers for weight decays for the gradual unfreezing", str)="[1.0, 1.0, 1.0, 1.0, 30.0]",
     fp16:  Param("Use mixed precision training", store_true)=False,
     lm:    Param("Use Pretrained LM", store_true)=False,
     plant: Param("PLANT attention", bool_arg)=True,
+    static_inattn:    Param("base Learning rate", int)=5,
+    diff_inattn:    Param("base Learning rate", int)=30,
     fit_sgdr: Param("PLANT attention", store_true)=False,
+    unfreeze_l2r: Param("Unfreeze L2R along with last layer while gradual unfreezing", store_true)=False,
+    sgdr_n_cycles:    Param("base Learning rate", int)=4,
     attn_init: Param("Initial wgts for Linear, Diff. PLANT and Static PLANT", str)="(0, 0, 1)",
     dump:  Param("Print model; don't train", int)=0,
     runs:  Param("Number of times to repeat training", int)=1,
@@ -249,9 +318,13 @@ def main(
         torch.save(dls_clas, dls_file)
 
     epochs = json.loads(epochs)
-    lrs = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs)]
-    lrs_sgdr = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_sgdr)]
+    lrs_linattn = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_linattn)]
+    lrs_plant = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_plant)]
+    lrs_sgdr_linattn = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_sgdr_linattn)]
+    lrs_sgdr_plant = [L(match.split(',')).map(float) for match in re.findall(r'\((.*?)\)', lrs_sgdr_plant)]
     wd_linattn = json.loads(wd_linattn)
+    wd_plant = json.loads(wd_plant)
+    wd_mul_plant = json.loads(wd_mul_plant)
     for run in range(runs):
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {sum(epochs)}; lr: {lr}; bs: {bs}')
@@ -262,6 +335,8 @@ def main(
             if not trn_frm_cpt and logfname.exists(): logfname.unlink() # don't delete if from training from chkpt
             cbs += L(CSVLogger(fname=logfname, append=True))
         if wandblog: cbs += L(WandbCallback(log_preds=False, log_model=True, model_name=fname))
+        # cbs += L(ShortEpochCallback(pct=0.7, short_valid=False))
+        # cbs += L(TestCallback())
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
                                 #    metrics=[partial(precision_at_k, k=15), F1ScoreMulti(thresh=0.5, average='macro')], path=tmp, cbs=cbs,
                                    metrics=[partial(precision_at_k, k=15)], path=tmp, cbs=cbs,
@@ -269,6 +344,8 @@ def main(
                                    splitter=None,
                                    running_decoder=True,
                                    attn_init=ast.literal_eval(attn_init),
+                                   static_inattn=static_inattn,
+                                   diff_inattn=diff_inattn
                                    )
         if track_train: 
             assert learn.cbs[1].__class__ is Recorder
@@ -280,13 +357,16 @@ def main(
         # import pdb; pdb.set_trace()
         if lm: learn = rank0_first(learn.load_encoder, files_lm[0].split('.')[0]) # change for bwd
         if plant: 
+            # import IPython; IPython.embed()
             # 'tok_lbl_info', 'p_L', 'lin_lambdarank', 'lm_decoder'
             brain = L(*files_l2r, files_lm[1]).map(lambda o: o.split('.')[0])
             # learn = rank0_first(learn.load_both, 'mimic3-9k_tok_lbl_info', 'p_L', 'lin_lambdarank_full', 'mimic3-9k_lm_decoder')
             learn = rank0_first(learn.load_both, *brain)
             setattr(learn, 'splitter', awd_lstm_xclas_split)
             learn.create_opt()
+            # import IPython; IPython.embed()
         if infer:
+            # learn.add_cb(RarePrecisionCallback(join_path_file(rarecodes_fname, source, ext='.pkl')))
             learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
             dev_dl = get_dev_dl(source, data, bs, workers=workers, lm_vocab_file=files_lm[2], bwd=bwd)
             try: 
@@ -328,6 +408,6 @@ def main(
         cms = learn.distrib_ctx(kwargs_handlers=[ddp_scaler])
         if wandblog: cms += L(wandb.init())
         with ContextManagers(cms):
-            if plant: train_plant(learn, epochs, lrs, lrs_sgdr, fit_sgdr=fit_sgdr)
-            else: train_linear_attn(learn, epochs, lrs, lrs_sgdr, wd_linattn, fit_sgdr=fit_sgdr)
+            if plant: train_plant(learn, epochs, lrs_plant, lrs_sgdr_plant, wd_plant, wd_mul_plant, fit_sgdr=fit_sgdr, unfreeze_l2r=unfreeze_l2r, sgdr_n_cycles=sgdr_n_cycles)
+            else: train_linear_attn(learn, epochs, lrs_linattn, lrs_sgdr_linattn, wd_linattn, fit_sgdr=fit_sgdr, sgdr_n_cycles=sgdr_n_cycles)
 

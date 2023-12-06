@@ -1,0 +1,2 @@
+launch_full_mimic4_icd10_statefuldecoder --fname mimic4_icd10_clas_full_statefuldecoder --plant --diff_inattn 8 --l2r_sgdr_lr0 3e-1
+launch_full_mimic4_icd10_statefuldecoder --fname mimic4_icd10_clas_full_nostatefuldecoder --plant --diff_inattn 8 --no_running_decoder

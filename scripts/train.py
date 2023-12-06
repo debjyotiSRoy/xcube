@@ -269,6 +269,7 @@ def main(
     diff_inattn:    Param("base Learning rate", int)=30,
     fit_sgdr: Param("PLANT attention", store_true)=False,
     unfreeze_l2r: Param("Unfreeze L2R along with last layer while gradual unfreezing", store_true)=False,
+    no_running_decoder: Param("Train XMTC model with stateful decoder", bool_arg)=True,
     sgdr_n_cycles:    Param("base Learning rate", int)=4,
     attn_init: Param("Initial wgts for Linear, Diff. PLANT and Static PLANT", str)="(0, 0, 1)",
     dump:  Param("Print model; don't train", int)=0,
@@ -342,7 +343,7 @@ def main(
                                    metrics=[partial(precision_at_k, k=15)], path=tmp, cbs=cbs,
                                    pretrained=False,
                                    splitter=None,
-                                   running_decoder=True,
+                                   running_decoder=not no_running_decoder,
                                    attn_init=ast.literal_eval(attn_init),
                                    static_inattn=static_inattn,
                                    diff_inattn=diff_inattn

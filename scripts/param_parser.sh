@@ -10,6 +10,10 @@ parse_params() {
                 plant=true
                 shift
                 ;;
+            -nd|--no_running_decoder)
+                no_running_decoder=true
+                shift
+                ;;    
             -d|--diff_inattn)
                 diff_inattn="$2"
                 shift 2

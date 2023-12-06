@@ -1,0 +1,2 @@
+launch_full_mimic4_icd10_gradual_unfreeze --fname mimic4_icd10_clas_full_gradual_unfreeze 
+launch_full_mimic4_icd10_nogradual_unfreeze --fname mimic4_icd10_clas_full_nogradual_unfreeze 

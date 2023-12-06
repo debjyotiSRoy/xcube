@@ -1,2 +1,2 @@
- ./run_scripts.sh --script_list_file script_list_mimic4_icd10_train
+ ./run_scripts.sh --script_list_file script_list_mimic4_icd10_train_stateful_decoder
 

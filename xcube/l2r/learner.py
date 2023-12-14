@@ -41,6 +41,7 @@ class L2RLearner:
         cbs, 
         opt_func=SGD, 
         path=None,
+        model_dir:str|Path='models', # Subdirectory to save and load models
         moms:tuple=(0.95,0.08,0.95)
     ):
         store_attr(but='cbs')
@@ -183,7 +184,7 @@ class L2RLearner:
 @delegates(save_model)
 def save(self:L2RLearner, file, **kwargs):
     "Save model and optimizer state (if 'with_opt') to `self.path/file`"
-    file = join_path_file(file, self.path, ext='.pth')
+    file = join_path_file(file, self.path/self.model_dir, ext='.pth')
     save_model(file, self.model, getattr(self, 'opt', None), **kwargs)
     return file
 
@@ -195,7 +196,7 @@ def load(self:L2RLearner, file, device=None, **kwargs):
     if device is None and hasattr(self.dls, 'device'): device = self.dls.device
     self.opt = getattr(self, 'opt', None)
     if self.opt is None: self.create_opt()
-    file = join_path_file(file, self.path, ext='.pth')
+    file = join_path_file(file, self.path/self.model_dir, ext='.pth')
     load_model(file, self.model, self.opt, device=device, **kwargs)
     return self
 

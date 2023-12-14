@@ -1,0 +1,2 @@
+launch_complete_mimic3 --fname mimic3_clas_complete_stateless --no_running_decoder
+launch_complete_mimic3 --fname mimic3_clas_complete_statefull

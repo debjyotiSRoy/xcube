@@ -50,6 +50,9 @@ class SentenceEncoder(Module):
         return inps,outs,mask
 
 # %% ../../../nbs/02_text.models.core.ipynb 14
+from ...layers import inattention
+
+# %% ../../../nbs/02_text.models.core.ipynb 15
 class AttentiveSentenceEncoder(Module):
     "Create an encoder over `module` that can process a full sentence."
     def __init__(self, bptt, module, decoder, pad_idx=1, max_len=None, running_decoder=True): 
@@ -78,9 +81,9 @@ class AttentiveSentenceEncoder(Module):
             elif self.running_decoder:
                 mask_slice = mask[:real_bs, chunk] 
                 inp = input[:real_bs, chunk]
-                # import pdb; pdb.set_trace()
                 hl, *_ = self.decoder((inp, o, mask_slice))
-                self.decoder.hl = hl.sigmoid()#.detach()
+
+                self.decoder.hl = hl.inattention(k=3, sort_dim=-1).sigmoid().detach()
                 # print(f"\t (Outside max_len) After reading bptt chunk: hl.sum() = {self.decoder.hl.sum()}", end='\n')
                 
         # import pdb; pdb.set_trace()
@@ -89,7 +92,7 @@ class AttentiveSentenceEncoder(Module):
         mask = torch.cat(masks, dim=1)
         return inps, outs, mask
 
-# %% ../../../nbs/02_text.models.core.ipynb 15
+# %% ../../../nbs/02_text.models.core.ipynb 16
 def masked_concat_pool(output, mask, bptt):
     "Pool `MultiBatchEncoder` outputs into one vector [last_hidden, max_pool, avg_pool]"
     lens = output.shape[1] - mask.long().sum(dim=1)
@@ -100,7 +103,7 @@ def masked_concat_pool(output, mask, bptt):
     x = torch.cat([output[torch.arange(0, output.size(0)),-last_lens-1], max_pool, avg_pool], 1) #Concat pooling.
     return x
 
-# %% ../../../nbs/02_text.models.core.ipynb 16
+# %% ../../../nbs/02_text.models.core.ipynb 17
 class XPoolingLinearClassifier(Module):
     def __init__(self, dims, ps, bptt, y_range=None):
         self.layer = LinBnDrop(dims[0], dims[1], p=ps, act=None)
@@ -112,13 +115,13 @@ class XPoolingLinearClassifier(Module):
         x = self.layer(x)
         return x, out, out
 
-# %% ../../../nbs/02_text.models.core.ipynb 19
+# %% ../../../nbs/02_text.models.core.ipynb 20
 from ...layers import _create_bias
 
-# %% ../../../nbs/02_text.models.core.ipynb 20
+# %% ../../../nbs/02_text.models.core.ipynb 21
 from ...utils import *
 
-# %% ../../../nbs/02_text.models.core.ipynb 21
+# %% ../../../nbs/02_text.models.core.ipynb 22
 class LabelAttentionClassifier(Module):
     initrange=0.1
     def __init__(self, n_hidden, n_lbs, plant=0.5, attn_init=(0,0,1), y_range=None, static_inattn=5, diff_inattn=30):
@@ -147,7 +150,7 @@ class LabelAttentionClassifier(Module):
         if self.y_range is not None: pred = sigmoid_range(pred, *self.y_range)
         return pred, attn, wgts, lbs_cf 
 
-# %% ../../../nbs/02_text.models.core.ipynb 24
+# %% ../../../nbs/02_text.models.core.ipynb 25
 def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
@@ -162,19 +165,19 @@ def get_xmltext_classifier(arch, vocab_sz, n_class, seq_len=72, config=None, dro
     model = SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)
 
-# %% ../../../nbs/02_text.models.core.ipynb 25
+# %% ../../../nbs/02_text.models.core.ipynb 26
 import re
 def _get_filter_params(m, but:re.Pattern):
     return [p for n, p in list(m.named_parameters()) if not but.match(n)]
 
-# %% ../../../nbs/02_text.models.core.ipynb 26
+# %% ../../../nbs/02_text.models.core.ipynb 27
 def awd_lstm_xclas_split(model):
     "Split a RNN `model` in groups for differential learning rates."
     groups = [nn.Sequential(model[0].module.encoder, model[0].module.encoder_dp)]
     groups += [nn.Sequential(rnn, dp) for rnn, dp in zip(model[0].module.rnns, model[0].module.hidden_dps)]
     return L(groups).map(params) + [params(model[1].pay_attn.lm_decoder)] + [params(model[1].pay_attn.l2r)] + L(model[1]).map(partial(_get_filter_params, but=re.compile('^(pay_attn.l2r|pay_attn.lm_decoder)')))
 
-# %% ../../../nbs/02_text.models.core.ipynb 28
+# %% ../../../nbs/02_text.models.core.ipynb 29
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True, 
                            plant=0.5, attn_init=(0, 0, 1), static_inattn=5, diff_inattn=30):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"

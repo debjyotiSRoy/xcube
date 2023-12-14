@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Include the parameter parsing function
+source param_parser.sh
+
+# Initialize parameters with default values
+
+# Parse named parameters
+parse_params "$@"
+
+# Print params passed
+
+python \
+        splits.py \
+        --source_url="XURLs.MIMIC3" \
+        --data="mimic3-9k_full" \
+        --usecols="subject_id,hadm_id,text,labels,length,is_valid,split" \
+        --train_splits="[21525]" 
+        # --train_splits="[25,58,136,320,750,1756,4111,9623,22525]" 

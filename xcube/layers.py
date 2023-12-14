@@ -209,6 +209,7 @@ class XMLAttention(Module):
             
             top_tok_lin_attn_wgts = self.lin_attn(sentc).softmax(dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
             # change
+            
             # import pdb; pdb.set_trace()
             
             top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=self.diff_inattn, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)

@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Include the parameter parsing function
+source param_parser.sh
+
+# Initialize parameters with default values
+fname="mimic3_clas_58"
+plant=false
+infer=0
+diff_inattn=8
+l2r_sgdr_lr0=1e-1
+no_running_decoder=false
+
+# Parse named parameters
+parse_params "$@"
+
+# Check and use string and boolean parameters
+echo "fname is: $fname"
+echo "infer is: $infer"
+echo "diff_inattn is: $diff_inattn"  
+echo "l2r_sgdr_lr0 is: $l2r_sgdr_lr0"
+
+if [ "$plant" = true ]; then
+    echo "plant is true"
+else
+    echo "plant is false"
+fi
+
+if [ "$no_running_decoder" = false ]; then
+    echo "Training XMTC with Stateful Decoder"
+else
+    echo "Training XMTC without Stateful Decoder"
+fi
+
+# python -m pdb \
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
+                                    train.py \
+                                    --source_url="XURLs.MIMIC3" \
+                                    --source_url_l2r="XURLs.MIMIC3_L2R" \
+                                    --data="mimic3-9k_58" \
+                                    --rarecodes_fname="none" \
+                                    --files_lm="mimic3-9k_lm_finetuned.pth,mimic3-9k_lm_decoder.pth,mimic3-9k_dls_lm_vocab.pkl" \
+                                    --files_l2r="mimic3-9k_tok_lbl_info.pkl,mimic3-9k_p_L.pkl,mimic3-9k_l2r_lin_lambdarank.pth" \
+                                    --fp16 \
+                                    --workers=16 \
+                                    --track_train \
+                                    --log \
+                                    --lm \
+                                    --no_running_decoder=$no_running_decoder \
+                                    --epochs="[5, 0, 0, 0, 0]" \
+                                    --lrs_linattn="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
+                                    --lrs_plant="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
+                                    --fit_sgdr \
+                                    --sgdr_n_cycles=3 \
+                                    --lrs_sgdr_linattn="[(0.1,$l2r_sgdr_lr0), (0.8,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
+                                    --lrs_sgdr_plant="[(0.1,$l2r_sgdr_lr0), (0.8,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
+                                    --wd_linattn="[0.01, 0.01, 0.01, 0.3]" \
+                                    --wd_plant="[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]" \
+                                    --wd_mul_plant="[1.0, 1.0, 1.0, 1.0, 30.0]" \
+                                    --static_inattn=5 \
+                                    --diff_inattn=$diff_inattn \
+                                    --bs=16 \
+                                    --save_model \
+                                    --fname=$fname \
+                                    --runs=1 \
+                                    --plant=$plant \
+                                    --attn_init="(1,0,0)" \
+                                    --infer=$infer \
+                                    --metrics="partial(precision_at_k, k=3); partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15); precision_at_r"
+echo "files created:"
+find .. -name "$fname*" 

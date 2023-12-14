@@ -12,6 +12,7 @@ def lbs_freqs(df):
 def main(
     source_url: Param("Source url", str)="XURLs.MIMIC3",
     data:  Param("Filename of the raw data", str)="mimic3-9k",
+    usecols: Param("Column names form the data file", str)="subject_id,_id,text,labels,num_targets,is_valid,split",
     train_splits: Param("Size of training splits", str)="[25, 50, 100, 200, 400, 800, 1600, 3200, 4500, 6400, 9000, 12800, 18000, 25600, 36000, 49354]"
 ):
 
@@ -19,9 +20,11 @@ def main(
     
     source = untar_xxx(eval(source_url))
     data_file = join_path_file(data, source, ext='.csv')
+    usecols = usecols.split(',')
     df = pd.read_csv(data_file,
                  header=0,
-                 usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+                #  usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+                usecols=usecols,
                  dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
     print(f"The full dataset {data} has {len(lbs_freqs(df))} labels.")
@@ -33,10 +36,8 @@ def main(
     files = [source/('_'.join(data.split('_')[:-1])+'_' + str(o) + '.csv') for o in train_splits]
     print(train_splits)
     print(files)
-    # import pdb; pdb.set_trace()
     for splt,file in zip(train_splits, files):
         df_sample = df[~df['is_valid']].sample(n=splt, random_state=88)
         print(f"{file = }, instances per label = {np.mean(lbs_freqs(df_sample))}")
         df_sample = pd.concat((df_sample, df[df['is_valid']]))
         df_sample.to_csv(file, index=False)
-    # import IPython; IPython.embed()

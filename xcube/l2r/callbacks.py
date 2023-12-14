@@ -468,8 +468,11 @@ class AMPMode(Enum):
 # %% ../../nbs/11_l2r.callbacks.ipynb 42
 class TestCallback(Callback):
     order = 1000
-    def after_fit(self):
-        import pdb; pdb.set_trace()
+    def before_batch(self):
+        # import pdb; pdb.set_trace()
+        ic(self.opt.hypers)
+    # def after_epoch(self):
+        # ic(self.opt.hypers)
 
 # %% ../../nbs/11_l2r.callbacks.ipynb 43
 class MemoryErrorTest(Callback):

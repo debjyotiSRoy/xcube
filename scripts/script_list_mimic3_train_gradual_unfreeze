@@ -1,0 +1,2 @@
+launch_complete_mimic3_gradual_unfreeze --fname mimic3_clas_complete_gradual_unfreeze 
+launch_complete_mimic3_nogradual_unfreeze --fname mimic3_clas_complete_nogradual_unfreeze 

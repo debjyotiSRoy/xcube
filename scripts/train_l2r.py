@@ -19,7 +19,7 @@ def after_batch(self: ProgressBarCallback):
         if getattr(self.track_results, 'losses'): 
             try:
                 # self.pbar.comment = ', '.join([f'{name} = {val: .4f}' for name, val in L(self.track_results.names).zipwith(L(getattrs(self.track_results, 'losses', 'ndcgs', 'ndcgs_at_6', 'accs')).itemgot(-1).map(Self.item()))]) + f', smooth_moi = {self.track_results.smooth_moi: .4f}'
-                self.pbar.comment = ', '.join([f'{name} = {val: .4f}' for name, val in L(self.track_results.names).zipwith(L(getattrs(self.track_results, 'losses', 'ndcgs', 'ndcgs_at_6', 'accs')).itemgot(-1).map(Self.item()))]) + f', '
+                self.pbar.comment = ', '.join([f'{name} = {val: .4f}' for name, val in L(self.track_results.names).zipwith(L(getattrs(self.track_results, 'losses', 'ndcgs', 'ndcgs_at_6', 'accs')).itemgot(-1).map(Self.item()))]) + f", lr={self.opt.hypers[0]['lr']:.6f}"
             except TypeError as e: pass
 
 
@@ -50,7 +50,9 @@ def get_dls(source, data, bs, lbs_chunks, sl, save_dir, workers=None,):
     workers = ifnone(workers, min(8, num_cpus()))
     data = join_path_file(data, source, ext='.ft')
     df_l2r = pd.read_feather(data)
-    df_l2r = df_l2r.drop(['bcx_mutual_info'], axis=1)
+    col_drops = [c for c in df_l2r.columns if 'mutual_info' in c]
+    # df_l2r = df_l2r.drop(['bcx_mutual_info'], axis=1)
+    df_l2r = df_l2r.drop(col_drops, axis=1)
     pdl = PreLoadTrans(df_l2r, device=torch.device('cpu'))
     scored_toks = pdl.quantized_score()
     # torch.save(scored_toks, save_dir/'scored_tokens.pth'); generated_files.append(save_dir/'scored_tokens.pth')
@@ -123,6 +125,7 @@ def main(
     # for _ in range(2):
     #     for xb in progress_bar(dls_l2r.valid): time.sleep(0.01)
     # end <remove later>
+    # import IPython; IPython.embed()
 
     monitor = 'ndcg_at_6' if 'lambda' in model_algo else 'acc'
     s = model_algo.split('_')
@@ -191,18 +194,29 @@ def main(
         try:
             # learner.fit_one_cycle(epochs, lr_max=0.07, start_epoch=epochs_so_far, )
             print(f"Training with {lr=}.")
-            learner.fit(epochs, lr=lr, wd=0.1, start_epoch=epochs_so_far, )
-            # learner.fit_sgdr(4, 1, lr_max=0.1, start_epoch=epochs_so_far)
+            # learner.fit_one_cycle(epochs, lr_max=lr, start_epoch=epochs_so_far, )
+            # learner.fit(epochs, lr=lr, wd=0.1, start_epoch=epochs_so_far, )
+
+            # learner.fit_sgdr(4, 1, lr_max=0.1, start_epoch=epochs_so_far) # 1 lr=0.1
+            # learner.fit_one_cycle(epochs, lr_max=lr, start_epoch=epochs_so_far, ) #2 lr=7e-2
+            # learner.fit(epochs, lr=lr, wd=0.1, start_epoch=epochs_so_far, ) #lr=7e-3
+            # learner.fit(epochs, lr=lr, wd=0.1, start_epoch=epochs_so_far, ) #lr=7e-3
+            # learner.fit(epochs, lr=lr, wd=0.1, start_epoch=epochs_so_far, ) #lr=7e-4
+            learner.fit(epochs, lr=lr, wd=0.1, start_epoch=epochs_so_far, ) #lr=7e-5
+
             # epochs_so_far = learner.epoch+1
             break
         except torch.cuda.OutOfMemoryError as e:
+            print("Memory Error!!! Saving the Crashed Model!")
+            learner.save('crashed')
             best_so_far = learner.save_call_back.best
             epochs_so_far = learner.epoch
             learner.model = None
             torch.cuda.empty_cache()
-            print("Memory Error Occurred, Loading Checkpoint Model and Resume Training...")
+            print("Memory Error Occurred, Loading Crashed Model and Resume Training...")
             learner = get_learner(model, dls_l2r, **learner_params, path=tmp)
-            learner = learner.load(learner.save_call_back.fname, device= default_device())
+            # learner = learner.load(learner.save_call_back.fname, device= default_device())
+            learner = learner.load('crashed', device= default_device())
             print(f"We are monitoring {learner.save_call_back.monitor}. Set the best so far = {best_so_far}")
             learner.save_call_back.best = best_so_far
             continue

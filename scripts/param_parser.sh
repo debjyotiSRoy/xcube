@@ -22,6 +22,10 @@ parse_params() {
                 l2r_sgdr_lr0="$2"
                 shift 2
                 ;; 
+            --lin_sgdr_lr0)
+                lin_sgdr_lr0="$2"
+                shift 2
+                ;;
             -i|--infer)
                 if [[ "$2" == "0" || "$2" == "1" ]]; then
                     infer="$2"  # Assign the value of the next argument to the 'infer' variable

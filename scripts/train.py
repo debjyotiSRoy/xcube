@@ -77,15 +77,15 @@ def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
     # mimic3
-    # df = pd.read_csv(data,
-    #              header=0,
-    #              names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
-    #              dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
-    # mimic4
     df = pd.read_csv(data,
                  header=0,
-                 usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
-                 dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
+                 names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+                 dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+    # mimic4
+    # df = pd.read_csv(data,
+    #              header=0,
+    #              usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+    #              dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
     lbl_freqs = Counter()
     for labels in df.labels: lbl_freqs.update(labels.split(';'))
@@ -139,6 +139,8 @@ def get_dev_dl(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_d
     return dev_dl
 
 def train_linear_attn(learn, epochs, lrs, lrs_sgdr, wd_linattn, fit_sgdr=False, sgdr_n_cycles=4):
+    
+    ic(lrs_sgdr)
     if epochs[0] or epochs[1]:
         print("unfreezing the last layer...")
         if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=lrs_sgdr[0][0], wd=wd_linattn[0])
@@ -170,6 +172,7 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=F
         # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
         ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
         ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
+        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('shape')}")
         ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
         ic(lrs_sgdr)
         if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[0][1], lrs_sgdr[0][0]], wd=wd_mul_plant[0]*array(wd_plant), ) #rare
@@ -181,6 +184,10 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=F
     if epochs[1]: # unfreeze the lm decoder
         print("unfreezing the LM decoder...")
         learn.freeze_to(-3) 
+        ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
+        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
+        ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
+        ic(lrs_sgdr)
         if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[1][1], lrs_sgdr[1][0]], wd=wd_mul_plant[1]*array(wd_plant))
         else: learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=wd_mul_plant[1]*array(wd_plant))
         print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
@@ -308,7 +315,6 @@ def main(
     for f in files_l2r:
         if not (tmp/'models'/f).exists():
             (tmp/'models'/f).symlink_to(source_l2r/f) 
-
     # loading dataloaders
     dls_name = '_dls_clas_bwd_' if bwd else '_dls_clas_' 
     dls_file = join_path_file(data+dls_name+str(bs), tmp, ext='.pkl')

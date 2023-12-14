@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Include the parameter parsing function
+source param_parser.sh
+
+# Initialize parameters with default values
+fname="mimic3-9k_l2r_new"
+model_algo="lin_lambdarank"
+
+# Parse named parameters
+parse_params "$@"
+
+# Print params passed
+echo "fname is: $fname"
+echo "model_algo is: $model_algo"
+
+export OMP_NUM_THREADS=4
+# python -m pdb \
+accelerate launch --mixed_precision=fp16 --num_processes=1 \
+                                    train_l2r.py \
+                                    --source_url="XURLs.MIMIC3_L2R" \
+                                    --data="mimic3-9k_tok_lbl" \
+                                    --epochs=100 \
+                                    --bs=64 \
+                                    --lbs_chunks=4 \
+                                    --sl=64 \
+                                    --lr=7e-5 \
+                                    --model_algo=$model_algo \
+                                    --emb_sz=400 \
+                                    --fname=$fname \
+                                    --track_train \
+                                    --infer=1 \
+                                    --log \
+                                    --trn_frm_cpt
+echo "files created:"
+find ../tmp -name "$fname*" 

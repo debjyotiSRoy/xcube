@@ -14,6 +14,10 @@ parse_params() {
                 no_running_decoder=true
                 shift
                 ;;    
+            -ul|--unfreeze_l2r)
+                unfreeze_l2r=true
+                shift
+                ;;
             -d|--diff_inattn)
                 diff_inattn="$2"
                 shift 2

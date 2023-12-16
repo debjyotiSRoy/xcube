@@ -164,7 +164,7 @@ from .utils import *
 # %% ../nbs/01_layers.ipynb 52
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
-    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1), attn_damps=(1, 1, 1), static_inattn=5, diff_inattn=30):
+    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1), attn_damps=(1, 1, 1), static_inattn=5, diff_inattn=30, lowshot=False):
         store_attr('n_lbs,emb_sz,embed_p,plant')
         self.lbs = Embedding(n_lbs, emb_sz)
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
@@ -181,6 +181,7 @@ class XMLAttention(Module):
         init_default(self.compress)
         self.static_inattn = static_inattn
         self.diff_inattn = diff_inattn
+        self.lowshot = lowshot
     
     @property
     def attn(self): return self._attn
@@ -227,17 +228,17 @@ class XMLAttention(Module):
             # top_tok_attn_wgts = self.damps[0]*self.wgts[0]*top_tok_lin_attn_wgts + self.damps[1]*self.wgts[1]*top_tok_plant_attn_wgts + self.damps[2]*self.wgts[2]*top_tok_splant_attn_wgts
             # lbs_cf = None
 
-            lin_comb_lin = lincomb(sentc, wgts=top_tok_lin_attn_wgts.transpose(1,2))
-            lin_comb_plant = lincomb(sentc, wgts=top_tok_plant_attn_wgts.transpose(1,2))
-            lin_comb_splant = lincomb(sentc, wgts=top_tok_splant_attn_wgts.transpose(1,2))
+            lin_comb_lin = lincomb(sentc, wgts=top_tok_lin_attn_wgts.transpose(1,2)) # real
+            lin_comb_plant = lincomb(sentc, wgts=top_tok_plant_attn_wgts.transpose(1,2)) # real
+            lin_comb_splant = lincomb(sentc, wgts=top_tok_splant_attn_wgts.transpose(1,2)) # real
             # lin_comb_lin_plant = self.compress(torch.cat((lin_comb_lin, lin_comb_plant, lin_comb_splant), dim=-1)).relu()
-            lin_comb_lin_plant = lin_comb_lin + lin_comb_plant + lin_comb_splant
-            # import pdb; pdb.set_trace()
+            lin_comb_lin_plant = lin_comb_lin + lin_comb_plant + lin_comb_splant # real
+            
+            # only for lowshot
+            if self.lowshot: lin_comb_lin_plant = lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2))
 
             # lin_comb_lin_plant = lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2))
             # lin_comb_lin_plant = lin_comb_plant
-
-
 
             return lin_comb_lin_plant, top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
             

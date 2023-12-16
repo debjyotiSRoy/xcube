@@ -23,6 +23,22 @@ def after_batch(self: ProgressCallback):
         self.pbar.comment = ' '.join([f'{met.name} = {met.value.item():.4f}' for met in getattr(self.recorder, mets)])
 
 @patch
+def before_fit(self: Recorder):
+        "Prepare state for training"
+        self.lrs,self.iters,self.losses,self.values = [],[],[],[]
+        names = self.metrics.attrgot('name')
+        names[-2] += '_macro'
+        names[-1] += '_micro'
+        if self.train_metrics and self.valid_metrics:
+            names = L('loss') + names
+            names = names.map('train_{}') + names.map('valid_{}')
+        elif self.valid_metrics: names = L('train_loss', 'valid_loss') + names
+        else: names = L('train_loss') + names
+        if self.add_time: names.append('time')
+        self.metric_names = 'epoch'+names
+        self.smooth_loss.reset()
+
+@patch
 def after_pred(self: RNNCallback): 
     "Save the raw and dropped-out outputs and only keep the true output for loss computation"
     self.learn.pred,self.raw_out,self.out, _ = [o[-1] if is_listy(o) else o for o in self.pred]
@@ -276,6 +292,7 @@ def main(
     static_inattn:    Param("base Learning rate", int)=5,
     diff_inattn:    Param("base Learning rate", int)=30,
     fit_sgdr: Param("PLANT attention", store_true)=False,
+    lowshot: Param("Low shot setting", store_true)=False,
     unfreeze_l2r: Param("Unfreeze L2R along with last layer while gradual unfreezing", store_true)=False,
     no_running_decoder: Param("Train XMTC model with stateful decoder", bool_arg)=True,
     sgdr_n_cycles:    Param("base Learning rate", int)=4,
@@ -337,7 +354,7 @@ def main(
         set_seed(1, reproducible=True)
         pr(f'Rank[{rank_distrib()}] Run: {run}; epochs: {sum(epochs)}; lr: {lr}; bs: {bs}')
 
-        cbs = SaveModelCallback(monitor='valid_precision_at_k', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
+        cbs = SaveModelCallback(monitor='valid_f1_score_macro', fname=fname, with_opt=True, reset_on_fit=False) if save_model else None
         if not infer and log: 
             logfname = join_path_file(fname, tmp, ext='.csv')
             if not trn_frm_cpt and logfname.exists(): logfname.unlink() # don't delete if from training from chkpt
@@ -346,14 +363,15 @@ def main(
         # cbs += L(ShortEpochCallback(pct=0.7, short_valid=False))
         # cbs += L(TestCallback())
         learn = rank0_first(xmltext_classifier_learner, dls_clas, AWD_LSTM, drop_mult=0.1, max_len=72*40,
-                                #    metrics=[partial(precision_at_k, k=15), F1ScoreMulti(thresh=0.5, average='macro')], path=tmp, cbs=cbs,
-                                   metrics=[partial(precision_at_k, k=15)], path=tmp, cbs=cbs,
+                                   metrics=[partial(precision_at_k, k=15), F1ScoreMulti(thresh=0.5, average='macro'), F1ScoreMulti(thresh=0.5, average='micro')], path=tmp, cbs=cbs,
+                                #    metrics=[partial(precision_at_k, k=15)], path=tmp, cbs=cbs,
                                    pretrained=False,
                                    splitter=None,
                                    running_decoder=not no_running_decoder,
                                    attn_init=ast.literal_eval(attn_init),
                                    static_inattn=static_inattn,
-                                   diff_inattn=diff_inattn
+                                   diff_inattn=diff_inattn,
+                                   lowshot=lowshot
                                    )
         if track_train: 
             assert learn.cbs[1].__class__ is Recorder
@@ -375,7 +393,6 @@ def main(
             # import IPython; IPython.embed()
         if infer:
             # learn.add_cb(RarePrecisionCallback(join_path_file(rarecodes_fname, source, ext='.pkl')))
-            setattr(learn.model[0], 'max_len', None)
             learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
             dev_dl = get_dev_dl(source, data, bs, workers=workers, lm_vocab_file=files_lm[2], bwd=bwd)
             try: 
@@ -392,13 +409,17 @@ def main(
                 learn.metrics += F1ScoreMulti(thresh=thresh_micro, average='micro')
                 # now comment
                 vals = validate(learn)
-                _print_metrics(vals, learn)
+                # _print_metrics(vals, learn)
                 pred, targ = learn.get_preds()
                 print(auc_metrics(pred, targ))
             except FileNotFoundError as e: 
                 print("Exception:", e)
                 print("Trained model not found!")
-            finally: exit()
+            except Exception as e:
+                # Handle other exceptions
+                print(f"Caught an exception: {e}")
+            finally: 
+                exit()
         if trn_frm_cpt:
             try:
                 ic(learn.save_model.fname)

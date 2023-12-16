@@ -124,9 +124,9 @@ from ...utils import *
 # %% ../../../nbs/02_text.models.core.ipynb 22
 class LabelAttentionClassifier(Module):
     initrange=0.1
-    def __init__(self, n_hidden, n_lbs, plant=0.5, attn_init=(0,0,1), y_range=None, static_inattn=5, diff_inattn=30):
+    def __init__(self, n_hidden, n_lbs, plant=0.5, attn_init=(0,0,1), y_range=None, static_inattn=5, diff_inattn=30, lowshot=False):
         store_attr('n_hidden,n_lbs,y_range')
-        self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden, plant=plant, attn_init=attn_init, static_inattn=static_inattn, diff_inattn=diff_inattn)
+        self.pay_attn = XMLAttention(self.n_lbs, self.n_hidden, plant=plant, attn_init=attn_init, static_inattn=static_inattn, diff_inattn=diff_inattn, lowshot=lowshot)
         # self.boost_attn = ElemWiseLin(self.n_lbs, self.n_hidden)
         self.boost_attn = ElemWiseLin(self.n_lbs, 400)
         self.label_bias = _create_bias((self.n_lbs,), with_zeros=False)
@@ -179,7 +179,7 @@ def awd_lstm_xclas_split(model):
 
 # %% ../../../nbs/02_text.models.core.ipynb 29
 def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, drop_mult=1., pad_idx=1, max_len=72*20, y_range=None, running_decoder=True, 
-                           plant=0.5, attn_init=(0, 0, 1), static_inattn=5, diff_inattn=30):
+                           plant=0.5, attn_init=(0, 0, 1), static_inattn=5, diff_inattn=30, lowshot=False):
     "Create a text classifier from `arch` and its `config`, maybe `pretrained`"
     meta = _model_meta[arch]
     config = ifnone(config, meta['config_clas']).copy()
@@ -188,7 +188,7 @@ def get_xmltext_classifier2(arch, vocab_sz, n_class, seq_len=72, config=None, dr
     n_hidden = config[meta['hid_name']]
     config.pop('output_p')
     init = config.pop('init') if 'init' in config else None
-    decoder = LabelAttentionClassifier(n_hidden, n_class, plant=plant, attn_init=attn_init, y_range=y_range, static_inattn=static_inattn, diff_inattn=diff_inattn)
+    decoder = LabelAttentionClassifier(n_hidden, n_class, plant=plant, attn_init=attn_init, y_range=y_range, static_inattn=static_inattn, diff_inattn=diff_inattn, lowshot=lowshot)
     encoder = AttentiveSentenceEncoder(seq_len, arch(vocab_sz, **config), decoder, pad_idx=pad_idx, max_len=max_len, running_decoder=running_decoder)
     model =  SequentialRNN(encoder, decoder)
     return model if init is None else model.apply(init)

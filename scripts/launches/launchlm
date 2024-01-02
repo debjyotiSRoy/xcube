@@ -13,8 +13,7 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
         --save_model \
         --fname=$fname \
         --runs=1 \
-        --infer=0 \
-        --bwd \
+        --infer=1 \
         --train_from_ckpt
 
 echo "files created:"

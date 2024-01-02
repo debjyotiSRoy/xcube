@@ -109,7 +109,8 @@ class PlantedLMDecoder(Module):
 
     def forward(self, input):
         dp_inp = self.output_dp(input)
-        return self.decoder(dp_inp).softmax(dim=-1).argmax(dim=-1)
+        return self.decoder(dp_inp)
+        # return self.decoder(dp_inp).softmax(dim=-1).argmax(dim=-1)
 
 # %% ../nbs/01_layers.ipynb 40
 def Diffntble_Planted_Attention(l2r: nn.ModuleDict): return _Pay_Attention(_diffntble_planted_attention, l2r)
@@ -159,12 +160,13 @@ def inattention(self:Tensor, k=None, sort_dim=0, sp_dim=0):
     return self
 
 # %% ../nbs/01_layers.ipynb 51
+from fastai.losses import CrossEntropyLossFlat
 from .utils import *
 
 # %% ../nbs/01_layers.ipynb 52
 class XMLAttention(Module):
     "Compute label specific attention weights for each token in a sequence"
-    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1), attn_damps=(1, 1, 1), static_inattn=5, diff_inattn=30, lowshot=False):
+    def __init__(self, n_lbs, emb_sz, embed_p=0.0, plant=0.5, attn_init=(0, 0, 1), attn_damps=(1, 1, 1), static_inattn=5, diff_inattn=30, lowshot=False, unfreeze_lm_decoder=False):
         store_attr('n_lbs,emb_sz,embed_p,plant')
         self.lbs = Embedding(n_lbs, emb_sz)
         # self.lbs_weight_dp = EmbeddingDropout(self.lbs_weight, embed_p)
@@ -182,6 +184,7 @@ class XMLAttention(Module):
         self.static_inattn = static_inattn
         self.diff_inattn = diff_inattn
         self.lowshot = lowshot
+        self.unfreeze_lm_decoder = unfreeze_lm_decoder
     
     @property
     def attn(self): return self._attn
@@ -194,7 +197,8 @@ class XMLAttention(Module):
         if self.attn.func.f is _linear_attention:
             top_tok_attn_wgts = F.softmax(self.attn(sentc), dim=1).masked_fill(mask[:,:,None], 0) # lbl specific wts for each token (bs, max_len, n_lbs)
             lbs_cf = None
-            return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
+            lm_loss = 0
+            return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf, lm_loss # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
         elif self.attn.func.f is _planted_attention:
             attn_wgts = self.attn(inp).masked_fill(mask[:,:,None], 0)
             top_tok_attn_wgts =attn_wgts.inattention(k=15, sort_dim=1)
@@ -213,7 +217,14 @@ class XMLAttention(Module):
             
             # import pdb; pdb.set_trace()
             
-            top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=self.diff_inattn, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            # [real] top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=self.diff_inattn, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            # doing research
+            pred_sentc = self.lm_decoder(sentc)
+            dec_sentc = pred_sentc.argmax(dim=-1)
+            top_tok_plant_attn_wgts = self.attn(dec_sentc).masked_fill(mask[:,:,None], 0).inattention(k=self.diff_inattn, sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
+            # import pdb; pdb.set_trace()
+            lm_loss = CrossEntropyLossFlat()(pred_sentc[:,:-1], inp.masked_fill(mask,0)[:, 1:]) if self.unfreeze_lm_decoder else 0
+            # doing research
             
             # top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).inattention(k=self.k.int().item(), sort_dim=1).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
             # top_tok_plant_attn_wgts = self.attn(self.lm_decoder(sentc)).masked_fill(mask[:,:,None], 0).softmax(dim=1) # lbl specific wts for each token (bs, max_len, n_lbs)
@@ -240,6 +251,6 @@ class XMLAttention(Module):
             # lin_comb_lin_plant = lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2))
             # lin_comb_lin_plant = lin_comb_plant
 
-            return lin_comb_lin_plant, top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
+            return lin_comb_lin_plant, top_tok_attn_wgts, lbs_cf, lm_loss # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)
             
         # return lincomb(sentc, wgts=top_tok_attn_wgts.transpose(1,2)), top_tok_attn_wgts, lbs_cf # for each lbl do a linear combi of all the tokens based on attn_wgts (bs, num_lbs, nh)

@@ -8,7 +8,9 @@ fname="mimic4_icd10_clas_25"
 plant=false
 infer=0
 diff_inattn=40
+lin_sgdr_lr0=8e-1
 l2r_sgdr_lr0=1e-1
+no_running_decoder=false
 
 # Parse named parameters
 parse_params "$@"
@@ -17,6 +19,7 @@ parse_params "$@"
 echo "fname is: $fname"
 echo "infer is: $infer"
 echo "diff_inattn is: $diff_inattn"  
+echo "lin_sgdr_lr0 is: $lin_sgdr_lr0"
 echo "l2r_sgdr_lr0 is: $l2r_sgdr_lr0"
 
 if [ "$plant" = true ]; then
@@ -25,9 +28,14 @@ else
     echo "plant is false"
 fi
 
-# python -m pdb \
-accelerate launch --mixed_precision=fp16 --num_processes=1 \
-                                    train.py \
+if [ "$no_running_decoder" = false ]; then
+    echo "Training XMTC with Stateful Decoder"
+else
+    echo "Training XMTC without Stateful Decoder"
+fi
+
+# Store all arguments in an array 
+args=(
                                     --source_url="XURLs.MIMIC4" \
                                     --source_url_l2r="XURLs.MIMIC4_L2R" \
                                     --data="mimic4_icd10_25" \
@@ -39,13 +47,15 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --track_train \
                                     --log \
                                     --lm \
-                                    --epochs="[5, 0, 0, 0, 0]" \
+                                    --no_running_decoder=$no_running_decoder 
+                                    --epochs="[1, 0, 0, 0, 0]" \
                                     --lrs_linattn="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --lrs_plant="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --fit_sgdr \
+                                    --unfreeze_l2r \
                                     --sgdr_n_cycles=3 \
-                                    --lrs_sgdr_linattn="[(0.8,$l2r_sgdr_lr0), (0.8,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
-                                    --lrs_sgdr_plant="[(0.8,$l2r_sgdr_lr0), (0.8,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
+                                    --lrs_sgdr_linattn="[($lin_sgdr_lr0,$l2r_sgdr_lr0), ($lin_sgdr_lr0,$l2r_sgdr_lr0), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
+                                    --lrs_sgdr_plant="[($lin_sgdr_lr0,$l2r_sgdr_lr0), ($lin_sgdr_lr0,$l2r_sgdr_lr0), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" \
                                     --wd_linattn="[0.01, 0.01, 0.01, 0.3]" \
                                     --wd_plant="[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]" \
                                     --wd_mul_plant="[1.0, 1.0, 1.0, 1.0, 30.0]" \
@@ -58,6 +68,22 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --plant=$plant \
                                     --attn_init="(1,0,0)" \
                                     --infer=$infer \
-                                    --metrics="partial(precision_at_k, k=3); partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15); precision_at_r"
+                                    --metrics="partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15)"
+)
+
+# Check if --unfreeze_l2r is provided as an argument
+if [[ "$@" =~ "--unfreeze_l2r" ]]; then
+    args+=( "--unfreeze_l2r" )  # Add --param1 to the array
+    echo "Unfreezing Pretrained L2R"
+fi
+
+# Print all arguments
+echo "All arguments:"
+for arg in "${args[@]}"; do
+    echo "$arg"
+done   
+
+accelerate launch --mixed_precision=fp16 --num_processes=1\
+                                    ./train.py "${args[@]}"
 echo "files created:"
 find .. -name "$fname*" 

@@ -340,14 +340,14 @@ from .models.core import _model_meta
 # %% ../../nbs/03_text.learner.ipynb 72
 @delegates(Learner.__init__)
 def xmltext_classifier_learner(dls, arch, seq_len=72, config=None, backwards=False, pretrained=True, collab=False, drop_mult=0.5, n_out=None,
-                           lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, plant=0.5, attn_init=(0, 0, 1), static_inattn=5, diff_inattn=30, lowshot=False, **kwargs):
+                           lin_ftrs=None, ps=None, max_len=72*20, y_range=None, splitter=None, running_decoder=True, plant=0.5, attn_init=(0, 0, 1), static_inattn=5, diff_inattn=30, lowshot=False, unfreeze_lm_decoder=False, **kwargs):
     "Create a `Learner` with a text classifier from `dls` and `arch`."
     vocab = _get_text_vocab(dls)
     if n_out is None: n_out = get_c(dls)
     assert n_out, "`n_out` is not defined, and could not be inferred from the data, set `dls.c` or pass `n_out`"
     model = get_xmltext_classifier2(arch, len(vocab), n_out, seq_len=seq_len, config=config, y_range=y_range,
                                 drop_mult=drop_mult, max_len=max_len, running_decoder=running_decoder, plant=plant, attn_init=attn_init,
-                                static_inattn=static_inattn, diff_inattn=diff_inattn, lowshot=lowshot)
+                                static_inattn=static_inattn, diff_inattn=diff_inattn, lowshot=lowshot, unfreeze_lm_decoder=unfreeze_lm_decoder)
     # model = get_xmltext_classifier(arch, len(vocab), n_out, seq_len=seq_len, config=config, y_range=y_range,
                                 # drop_mult=drop_mult, max_len=max_len)
     meta = _model_meta[arch]

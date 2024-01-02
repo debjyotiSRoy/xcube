@@ -1,5 +1,5 @@
 launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25
-launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25_plant --plant
+launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25_plant --plant --no_running_decoder
 launch_50_mimic4_icd10 --fname mimic4_icd10_clas_50
 launch_50_mimic4_icd10 --fname mimic4_icd10_clas_50_plant --plant
 launch_165_mimic4_icd10 --fname mimic4_icd10_clas_165
@@ -15,4 +15,4 @@ launch_7203_mimic4_icd10 --fname mimic4_icd10_clas_7203_plant --plant
 launch_18513_mimic4_icd10 --fname mimic4_icd10_clas_18513
 launch_18513_mimic4_icd10 --fname mimic4_icd10_clas_18513_plant --plant
 launch_49579_mimic4_icd10 --fname mimic4_icd10_clas_49579
-launch_49579_mimic4_icd10 --fname mimic4_icd10_clas_49579_plant --plant --diff_inattn 40 --l2r_sgdr_lr0 1e-1
+launch_49579_mimic4_icd10 --fname mimic4_icd10_clas_49579_plant --plant --no_running_decoder --lin_sgdr_lr0 1e-1

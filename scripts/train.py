@@ -205,18 +205,24 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=F
         ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
         ic(f"one LSTM layer: {learn.opt.param_lists[-4].attrgot('requires_grad')}")
         ic(lrs_sgdr)
-        lstm_lr = 1e-1
+        ic(lrs)
         # if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, lstm_lr, 8e-2, lrs_sgdr[2][1], lrs_sgdr[2][0]], wd=wd_mul_plant[2]*array(wd_plant))
-        learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-2, 1e-6, lrs[2][1], lrs[2][0]], wd=wd_mul_plant[2]*array(wd_plant))
+        learn.fit(epochs[2], lr=[1e-6, 1e-6, 1e-6, 1e-2, 1e-7, lrs[2][1], lrs[2][0]], wd=wd_mul_plant[2]*array(wd_plant))
         # learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[2][1], 0.15], wd=wd_mul_plant[2]*array(wd_plant))
-        print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+        # print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
     if epochs[3]: # unfreeze one more LSTM
         print("unfreezing one more LSTM...")
         learn.freeze_to(-5) 
-        learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[3][1], lrs[3][0]], wd=[0.3]*7)
+        ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
+        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
+        ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
+        ic(f"one LSTM layer: {learn.opt.param_lists[-4].attrgot('requires_grad')}")
+        ic(f"one LSTM layer: {learn.opt.param_lists[-5].attrgot('requires_grad')}")
+        ic(lrs_sgdr, lrs)
+        learn.fit(epochs[3], lr=[1e-6, 1e-6, 1e-2, 1e-2, 1e-6, lrs[3][1], lrs[3][0]], wd=wd_mul_plant[3]*array(wd_plant))
         # learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[3][1], lrs_sgdr[3][0]], wd=[0.3]*7)
-        print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
+        # print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
 
     if epochs[4]: # unfreeze the rest
         print("unfreezing the entire model...")
@@ -426,9 +432,9 @@ def main(
                 print("Validating the checkpointed model so that we can run from where we left of...")
                 # vals = validate(learn) # remove comment later
                 # print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {vals[1]}") # remove comment later
-                print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {0.44139649193684055}")
+                print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {0.4910143756522918}")
                 # learn.save_model.best = vals[1] # remove comment later
-                learn.save_model.best = 0.44139649193684055
+                learn.save_model.best = 0.4910143756522918
             except FileNotFoundError as e: 
                 print("Exception:", e)
                 print("Checkpoint model not found!")

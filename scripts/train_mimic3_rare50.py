@@ -41,7 +41,7 @@ def before_fit(self: Recorder):
 @patch
 def after_pred(self: RNNCallback): 
     "Save the raw and dropped-out outputs and only keep the true output for loss computation"
-    self.learn.pred,self.raw_out,self.out, _ = [o[-1] if is_listy(o) else o for o in self.pred]
+    self.learn.pred,self.raw_out,self.out, _, self.learn.loss_lm = [o[-1] if is_listy(o) else o for o in self.pred]
 
 class TestCallback(Callback):
     order = 1000 

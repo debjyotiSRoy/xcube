@@ -48,9 +48,9 @@ args=(
             --log 
             --lm 
             --no_running_decoder=$no_running_decoder 
-            --epochs="[0, 0, 8, 0, 0]" 
+            --epochs="[0, 0, 0, 8, 0]" 
             --lrs_linattn="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-6), (1e-2,1e-6), (1e-6,1e-6)]" 
-            --lrs_plant="[(6e-2,1e-6), (1e-2,1e-6), (1e-2, 1e-2), (1e-2,1e-6), (1e-6,1e-6)]" 
+            --lrs_plant="[(6e-2,1e-6), (1e-2,1e-2), (1e-2, 1e-2), (1e-2,1e-2), (1e-6,1e-6)]" 
             --fit_sgdr 
             --unfreeze_l2r 
             --sgdr_n_cycles=3 

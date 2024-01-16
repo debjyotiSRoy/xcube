@@ -199,7 +199,7 @@ class TextLearner(Learner):
         if device is None: device = self.dls.device
         if self.opt is None: self.create_opt()
         file = join_path_file(file, self.path/self.model_dir, ext='.pth')
-        load_model_text(file, self.model, self.opt, device=device, **kwargs)
+        load_model_text(file, self.model, self.opt, device=device, strict=False, **kwargs)
         return self
     
     def load_collab(self,

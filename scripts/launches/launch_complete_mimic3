@@ -34,9 +34,8 @@ else
     echo "Training XMTC without Stateful Decoder"
 fi
 
-# python -m pdb \
-accelerate launch --mixed_precision=fp16 --num_processes=1 \
-                                    train.py \
+# Store all arguments in an array
+args=(
                                     --source_url="XURLs.MIMIC3" \
                                     --source_url_l2r="XURLs.MIMIC3_L2R" \
                                     --data="mimic3-9k_full" \
@@ -62,13 +61,30 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --wd_mul_plant="[1.0, 1.0, 1.0, 1.0, 30.0]" \
                                     --static_inattn=5 \
                                     --diff_inattn=$diff_inattn \
-                                    --bs=16 \
+                                    --bs=8 \
                                     --save_model \
                                     --fname=$fname \
                                     --runs=1 \
                                     --plant=$plant \
                                     --attn_init="(1,0,0)" \
                                     --infer=$infer \
-                                    --metrics="partial(precision_at_k, k=3); partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15); precision_at_r"
-echo "files created:"
-find .. -name "$fname*" 
+                                    --metrics="partial(precision_at_k, k=3); partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15)"
+)
+
+# Check if --unfreeze_l2r is provided as an argument
+if [[ "$@" =~ "--unfreeze_l2r" ]]; then
+    args+=( "--unfreeze_l2r" )  # Add --param1 to the array
+    echo "Unfreezing Pretrained L2R"
+fi
+
+# Print all arguments
+echo "All arguments:"
+for arg in "${args[@]}"; do
+    echo "$arg"
+done   
+
+# python -m pdb \
+accelerate launch --mixed_precision=fp16 --num_processes=1\
+                                    ./train.py "${args[@]}"
+# echo "files created:"
+# find .. -name "$fname*" 

@@ -187,10 +187,10 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=F
         print("unfreezing the last layer and potentially the pretrained l2r...")
         learn.freeze_to(-2 if unfreeze_l2r else -1) 
         # learn.fit_sgdr(4, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-3, 0.2], wd=[0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]) #top
-        ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
-        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
-        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('shape')}")
-        ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
+        # ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
+        # ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
+        # ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('shape')}")
+        # ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
         ic(lrs_sgdr)
         if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[0][1], lrs_sgdr[0][0]], wd=wd_mul_plant[0]*array(wd_plant), ) #rare
         else: learn.fit(epochs[0], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[0][1], lrs[0][0]], wd=wd_mul_plant[0]*array(wd_plant))
@@ -201,9 +201,9 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=F
     if epochs[1]: # unfreeze the lm decoder
         print("unfreezing the LM decoder...")
         learn.freeze_to(-3) 
-        ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
-        ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
-        ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
+        # ic(f"classification layer: {learn.opt.param_lists[-1].attrgot('requires_grad')}")
+        # ic(f"pretrained l2r layer: {learn.opt.param_lists[-2].attrgot('requires_grad')}")
+        # ic(f"lm decoder layer: {learn.opt.param_lists[-3].attrgot('requires_grad')}")
         ic(lrs_sgdr)
         if fit_sgdr: learn.fit_sgdr(sgdr_n_cycles, 1, lr_max=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs_sgdr[1][1], lrs_sgdr[1][0]], wd=wd_mul_plant[1]*array(wd_plant))
         else: learn.fit(epochs[1], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[1][1], lrs[1][0]], wd=wd_mul_plant[1]*array(wd_plant))

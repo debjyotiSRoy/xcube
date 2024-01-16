@@ -81,16 +81,16 @@ def splitter(df):
 def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_lm_vocab.pkl', bwd=False):
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
-    # mimic3
-    # df = pd.read_csv(data,
-    #              header=0,
-    #              names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
-    #              dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
-    # mimic4
-    df = pd.read_csv(data,
-                 header=0,
-                 usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
-                 dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
+    if 'mimic3' in data.name.split('.')[0]: # mimic3
+        df = pd.read_csv(data,
+                    header=0,
+                    names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+                    dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+    else: # mimic4
+        df = pd.read_csv(data,
+                    header=0,
+                    usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+                    dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
     lbl_freqs = Counter()
     for labels in df.labels: lbl_freqs.update(labels.split(';'))
@@ -114,16 +114,16 @@ def get_dls(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_
 def get_dev_dl(source, data, bs, sl=16, workers=None, lm_vocab_file='mimic3-9k_dls_lm_vocab.pkl', bwd=False):
     workers = ifnone(workers,min(8,num_cpus()))
     data = join_path_file(data, source, ext='.csv')
-    # mimic3
-    # df = pd.read_csv(data,
-    #              header=0,
-    #              names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
-    #              dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
-    # mimic4
-    df = pd.read_csv(data,
-                 header=0,
-                 usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
-                 dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
+    if 'mimic3' in data.name.split('.')[0]: # mimic3
+        df = pd.read_csv(data,
+                    header=0,
+                    names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
+                    dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
+    else: # mimic4
+        df = pd.read_csv(data,
+                    header=0,
+                    usecols=['subject_id', '_id', 'text', 'labels', 'num_targets', 'is_valid', 'split'],
+                    dtype={'subject_id': str, '_id': str, 'text': str, 'labels': str, 'num_targets': np.int64, 'is_valid': bool, 'split': str})
     df[['text', 'labels']] = df[['text', 'labels']].astype(str)
 
     # pdb.set_trace()
@@ -227,7 +227,10 @@ def train_plant(learn, epochs, lrs, lrs_sgdr, wd_plant, wd_mul_plant, fit_sgdr=F
     if epochs[4]: # unfreeze the rest
         print("unfreezing the entire model...")
         learn.unfreeze() 
-        learn.fit(epochs[4], lr=[1e-6, 1e-6, 1e-6, 1e-6, 1e-6, lrs[4][1], lrs[4][0]], wd=wd_mul_plant[4]*array(wd_plant))
+        ic(lrs_sgdr, lrs)
+        # wd_plant = [0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]
+        learn.fit(epochs[4], lr=[1e-5, 1e-5, 1e-5, 1e-5, 1e-6, lrs[4][1], lrs[4][0]], wd=array(wd_plant))
+        
 
     print("Done!!!")
     # print(f"lin_wt = {learn.model[1].pay_attn.wgts[0]}, plant_wt = {learn.model[1].pay_attn.wgts[1]}, splant_wt = {learn.model[1].pay_attn.wgts[2]}")
@@ -422,6 +425,9 @@ def main(
             except FileNotFoundError as e: 
                 print("Exception:", e)
                 print("Trained model not found!")
+            except Exception as e:
+                print("Exception:", e)
+                # import pdb; pdb.set_trace()
             finally: exit()
         if trn_frm_cpt:
             try:
@@ -432,9 +438,9 @@ def main(
                 print("Validating the checkpointed model so that we can run from where we left of...")
                 # vals = validate(learn) # remove comment later
                 # print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {vals[1]}") # remove comment later
-                print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {0.4910143756522918}")
+                print(f"We are monitoring {learn.save_model.monitor}. Set the best so far = {0.5569504763828573}")
                 # learn.save_model.best = vals[1] # remove comment later
-                learn.save_model.best = 0.4910143756522918
+                learn.save_model.best = 0.5569504763828573
             except FileNotFoundError as e: 
                 print("Exception:", e)
                 print("Checkpoint model not found!")

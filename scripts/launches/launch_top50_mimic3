@@ -82,8 +82,9 @@ for arg in "${args[@]}"; do
     echo "$arg"
 done
 
+# python -m pdb \
 accelerate launch --mixed_precision=fp16 --num_processes=1\
                                     ./train.py "${args[@]}"
 
-echo "files created:"
-find .. -name "$fname*" 
+# echo "files created:"
+# find .. -name "$fname*" 

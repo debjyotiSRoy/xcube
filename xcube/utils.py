@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['namestr', 'list_files', 'make_paths', 'plot_hist', 'plot_reduction', 'test_eqs', 'validate', 'cudamem',
-           'get_description']
+           'get_description', 'is_colab']
 
 # %% ../nbs/00_utils.ipynb 2
 from sklearn.preprocessing import StandardScaler
@@ -176,3 +176,32 @@ def get_description(codes):
                         # print(f"An error occurred.")
                         icd10_descriptions[code] = "Code not found"
     return icd10_descriptions
+
+# %% ../nbs/00_utils.ipynb 19
+def is_colab():
+    # Check if the 'google.colab' module is available
+    try:
+        import google.colab
+        IN_COLAB = True
+    except ImportError:
+        IN_COLAB = False
+
+    # Check for specific environment variables typically set in Colab
+    if 'COLAB_GPU' in os.environ:
+        IN_COLAB = True
+
+    if IN_COLAB:
+        print("Running in Google Colab")
+    else:
+        print("Not running in Google Colab")
+
+    if IN_COLAB:
+        try:
+            subprocess.check_call(["pip", "install", 'GitPython'])
+            print(f"Successfully installed GitPython")
+            from git import Repo
+            repo = Repo.clone_from('https://github.com/debjyotiSRoy/xcube.git', Path.cwd().parent/'xcube')
+            repo.git.checkout('plant')
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to install GitPython: {e}")
+    return IN_COLAB

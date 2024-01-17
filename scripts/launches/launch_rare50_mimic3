@@ -36,7 +36,7 @@ fi
 
 # Store all arguments in an array
 args=(
-    --source_url="XURLs.MIMIC3"
+    --source_url="XURLs.MIMIC3_DEMO"
     --source_url_l2r="XURLs.MIMIC3_L2R"
     --data="mimic3-9k_rare50"
     --lowshot

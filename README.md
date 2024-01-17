@@ -73,18 +73,32 @@ accelerate config
 
 ## How to use
 
+You can either clone the repo and open it in your own machine. Or if you
+don’t want to setup a python development environment, an even easier and
+quicker approach is to open this repo using [Google
+Colab](https://colab.research.google.com/). You can open this readme
+page in Colab using this
+[link](https://colab.research.google.com/github/debjyotiSRoy/xcube/blob/plant/nbs/index.ipynb).
+
 ``` python
-source = untar_xxx(XURLs.MIMIC3)
+IN_COLAB = is_colab()
+```
+
+    Not running in Google Colab
+
+``` python
+source_mimic3 = untar_xxx(XURLs.MIMIC3_DEMO)
 source_mimic4 = untar_xxx(XURLs.MIMIC4)
-path = Path.cwd().parent # root of the repo
+path = Path.cwd().parent/f"{'xcube' if IN_COLAB else ''}" # root of the repo
 (path/'tmp/models').mkdir(exist_ok=True, parents=True)
 tmp = path/'tmp'
 # os.chdir( f"{path/'scripts'}") # To launch our train/infer scripts
 ```
 
-Check your GPU memory! You should be able to train and infer all the
-models with atleast 16GB of memory. However, note that training the full
-versions of the datasets from scratch requires atleast 48GB memory.
+Check your GPU memory! If you are running this on google colab be sure
+to turn on the GPU runtime. You should be able to train and infer all
+the models with atleast 16GB of memory. However, note that training the
+full versions of the datasets from scratch requires atleast 48GB memory.
 
 ``` python
 cudamem()
@@ -104,7 +118,7 @@ Coding](https://aclanthology.org/2022.findings-emnlp.127/) for split
 creation).
 
 ``` python
-data = join_path_file('mimic3-9k_rare50', source, ext='.csv')
+data = join_path_file('mimic3-9k_rare50', source_mimic3, ext='.csv')
 !head -n 1 {data}
 ```
 
@@ -115,9 +129,6 @@ df = df = pd.read_csv(data,
                  header=0,
                  names=['subject_id', 'hadm_id', 'text', 'labels', 'length', 'is_valid', 'split'],
                  dtype={'subject_id': str, 'hadm_id': str, 'text': str, 'labels': str, 'length': np.int64, 'is_valid': bool, 'split': str})
-```
-
-``` python
 df.head(2)
 ```
 
@@ -188,7 +199,7 @@ Codes from Clinical Text](https://aclanthology.org/N18-1100/) for split
 creation)
 
 ``` python
-data = join_path_file('mimic3-9k_top50', source, ext='.csv')
+data = join_path_file('mimic3-9k_top50', source_mimic3, ext='.csv')
 !head -n 1 {data}
 ```
 
@@ -202,21 +213,72 @@ df = pd.read_csv(data,
 df.head(2)
 ```
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>subject_id</th>
+      <th>hadm_id</th>
+      <th>text</th>
+      <th>labels</th>
+      <th>length</th>
+      <th>is_valid</th>
+      <th>split</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>86006</td>
+      <td>111912</td>
+      <td>admission date discharge date date of birth sex f service surgery allergies patient recorded as having no known allergies to drugs attending first name3 lf chief complaint 60f on coumadin was found slightly drowsy tonight then fell down stairs paramedic found her unconscious and she was intubated w o any medication head ct shows multiple iph transferred to hospital1 for further eval major surgical or invasive procedure none past medical history her medical history is significant for hypertension osteoarthritis involving bilateral knee joints with a dependence on cane for ambulation chronic...</td>
+      <td>414.01;427.31;V58.61;401.9;96.71</td>
+      <td>230</td>
+      <td>False</td>
+      <td>dev</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>85950</td>
+      <td>189769</td>
+      <td>admission date discharge date service neurosurgery allergies sulfa sulfonamides attending first name3 lf chief complaint cc cc contact info major surgical or invasive procedure none history of present illness hpi 88m who lives with family had fall yesterday today had decline in mental status ems called pt was unresponsive on arrival went to osh head ct showed large r sdh pt was intubated at osh and transferred to hospital1 for further care past medical history cad s p mi in s p cabg in ventricular aneurysm at that time cath in with occluded rca unable to intervene chf reported ef 1st degre...</td>
+      <td>250.00;403.90;V45.81;96.71;585.9</td>
+      <td>304</td>
+      <td>False</td>
+      <td>dev</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
 To infer one our pretrained XMTC models on MIMIC3-top50 (Metrics for
 inference - Precision@3,5,8,15):
 
 ``` python
-print('\n'.join(L(source.glob("**/*top50*.pth")).map(str)))
-model_fname = Path('/home/deb/.xcube/data/mimic3/mimic3_clas_top50.pth')
-fname = Path(shutil.copy(model_fname, tmp/'models')).name.split('.')[0]
-fname
+model_fnames = L(source_mimic3.glob("**/*top50*.pth")).map(str)
+print('\n'.join(model_fnames))
+fname = Path(shutil.copy(model_fnames[2], tmp/'models')).name.split('.')[0]
+print(f"We are going to infer model {fname}.")
 ```
 
-    /home/deb/.xcube/data/mimic3/mimic3_clas_top50_plant_L2Runfrozen.pth
-    /home/deb/.xcube/data/mimic3/mimic3_clas_top50_plant_L2Rfrozen.pth
-    /home/deb/.xcube/data/mimic3/mimic3_clas_top50.pth
-
-    'mimic3_clas_top50'
+    /home/deb/.xcube/data/mimic3_demo/mimic3_clas_top50_plant_L2Runfrozen.pth
+    /home/deb/.xcube/data/mimic3_demo/mimic3_clas_top50_plant_L2Rfrozen.pth
+    /home/deb/.xcube/data/mimic3_demo/mimic3_clas_top50.pth
+    We are going to infer model mimic3_clas_top50.
 
 ``` python
 !./launches/launch_top50_mimic3 --fname {fname} --no_running_decoder --infer 1
@@ -237,7 +299,7 @@ Text](https://aclanthology.org/N18-1100/) for details of how the data
 was curated)
 
 ``` python
-data = join_path_file('mimic3-9k_full', source, ext='.csv')
+data = join_path_file('mimic3-9k_full', source_mimic3, ext='.csv')
 !head -n 1 {data}
 ```
 
@@ -306,7 +368,7 @@ df.head(2)
 Lets’s look at some of the ICD9 codes description:
 
 ``` python
-des = load_pickle(source/'code_desc.pkl')
+des = load_pickle(source_mimic3/'code_desc.pkl')
 lbl_dict = dict()
 for lbl in df.labels[1].split(';'):
     lbl_dict[lbl] = des.get(lbl, 'NF')
@@ -384,13 +446,13 @@ To infer one our pretrained XMTC models on MIMIC3-full (Metrics for
 inference - Precision@3,5,8,15):
 
 ``` python
-print('\n'.join(L(source.glob("**/*full*.pth")).map(str)))
-model_fname = Path('/home/deb/.xcube/data/mimic3/mimic3-9k_clas_full.pth')
-fname = Path(shutil.copy(model_fname, tmp/'models')).name.split('.')[0]
+model_fnames = L(source_mimic3.glob("**/*full*.pth")).map(str)
+print('\n'.join(model_fnames))
+fname = Path(shutil.copy(model_fnames[0], tmp/'models')).name.split('.')[0]
 print(f"Let's infer the pretrained model {fname}.")
 ```
 
-    /home/deb/.xcube/data/mimic3/mimic3-9k_clas_full.pth
+    /home/deb/.xcube/data/mimic3_demo/mimic3-9k_clas_full.pth
     Let's infer the pretrained model mimic3-9k_clas_full.
 
 ``` python

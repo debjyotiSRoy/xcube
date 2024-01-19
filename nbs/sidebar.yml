@@ -21,6 +21,4 @@ website:
       - 17_tutorial.train_l2r.ipynb
       - 18_tutorial.train_mimic3.ipynb
       - 19_text.callbacks.ipynb
-      - mimic-iv_data_extraction.ipynb
       - tutorial.ipynb
-      - wtut.ipynb

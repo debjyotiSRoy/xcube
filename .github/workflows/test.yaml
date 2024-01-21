@@ -5,7 +5,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-     - name : Check disk space
+     - name : Check disk space on runner
        run: |
          df -h /
 

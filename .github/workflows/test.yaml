@@ -10,5 +10,5 @@ jobs:
          df -h /
 
      - name : fastai workflow
-       uses: fastai/workflows/nbdev-ci@master]
+       uses: fastai/workflows/nbdev-ci@master
        

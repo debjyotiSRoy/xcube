@@ -53,7 +53,6 @@ def main(
 
 ):
     "Compare Actual Brain and Differentiable Brain"
-
     source = untar_xxx(eval(source_url))
     xml_vocab = load_pickle(source/xml_vocab_file)
     xml_vocab = L(xml_vocab).map(listify)
@@ -84,6 +83,8 @@ def main(
     print("Performing Static Brainsplant...")
     xml_brain, xml_lbsbias, toks_map, lbs_map, toks_xml2brain, lbs_xml2brain = brainsplant(xml_vocab, brain_vocab, brain, brain_bias)
     some_lbs = random.sample(lbs, 10)
+    # some_lbs = ['518.81', '530.81', '37.23', '934.1',] #'428.20', '784.2', '585.9']
+    # some_lbs = ['428.20', '784.2', '585.9']
     stripped_codes = [''.join(filter(str.isalnum, s)) for s in some_lbs]
     _map = dict(zip(some_lbs, stripped_codes))
     desc = get_description(stripped_codes)
@@ -121,6 +122,14 @@ def main(
     apprx_brain = mod_dict['token_factors'].weight @ mod_dict['label_factors'](lbs_idx).T + mod_dict['token_bias'].weight + mod_dict['label_bias'](lbs_idx).T
     _df = pd.DataFrame(array(xml_vocab[0])[apprx_brain.topk(dim=0, k=40).indices.cpu()], columns=L(some_lbs))
     print(_df)
+    _df.to_csv('diff_brain.csv')
+    for i, lbl in enumerate(some_lbs):
+        lbl_idx_from_xml = xml_vocab[1].index(lbl)
+        # import pdb; pdb.set_trace()
+        tok_vals_from_apprx_brain, top_toks_from_apprx_brain = L(apprx_brain[:, i].topk(k=40)).map(Self.cpu())
+        print(f"For the lbl {lbl} ({desc[_map[lbl]]}), the top tokens that needs attention are:")
+        print('\n'.join(L(array(xml_vocab[0])[top_toks_from_apprx_brain], use_list=True).zipwith(L(tok_vals_from_apprx_brain.detach().numpy(), use_list=True)).map(str).map(lambda o: "+ "+o)))
+        line()
     line()
 
     some_toks = random.sample(toks, 2)

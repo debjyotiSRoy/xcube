@@ -1,0 +1,16 @@
+launch_25_mimic3 --fname mimic3_clas_25_plant --plant --no_running_decoder  --diff_inattn 80 --infer 1
+launch_25_mimic3 --fname mimic3_clas_25 --no_running_decoder --infer 1
+launch_58_mimic3 --fname mimic3_clas_58_plant --plant --no_running_decoder --diff_inattn 80 --infer 1
+launch_58_mimic3 --fname mimic3_clas_58 --no_running_decoder --infer 1
+launch_136_mimic3 --fname mimic3_clas_136_plant --plant --no_running_decoder --diff_inattn 80  --infer 1
+launch_136_mimic3 --fname mimic3_clas_136 --no_running_decoder --infer 1
+launch_750_mimic3 --fname mimic3_clas_750_plant --plant --no_running_decoder --diff_inattn 80 --infer 1
+launch_750_mimic3 --fname mimic3_clas_750 --no_running_decoder --infer 1
+launch_1756_mimic3 --fname mimic3_clas_1756_plant --plant --no_running_decoder --diff_inattn 80 --infer 1
+launch_1756_mimic3 --fname mimic3_clas_1756 --no_running_decoder --infer 1
+launch_4111_mimic3 --fname mimic3_clas_4111_plant --plant --no_running_decoder --diff_inattn 80  --infer 1
+launch_4111_mimic3 --fname mimic3_clas_4111 --no_running_decoder --infer 1
+launch_9623_mimic3 --fname mimic3_clas_9623_plant --plant --no_running_decoder --diff_inattn 80 --infer 1
+launch_9623_mimic3 --fname mimic3_clas_9623 --no_running_decoder --infer 1
+launch_22525_mimic3 --fname mimic3_clas_22525_plant --plant --no_running_decoder --diff_inattn 80 --infer 1
+launch_22525_mimic3 --fname mimic3_clas_22525 --no_running_decoder --infer 1

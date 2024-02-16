@@ -66,6 +66,6 @@ accelerate launch --mixed_precision=fp16 --num_processes=1 \
                                     --plant=$plant \
                                     --attn_init="(1,0,0)" \
                                     --infer=$infer \
-                                    --metrics="partial(precision_at_k, k=3); partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15); precision_at_r"
-echo "files created:"
-find .. -name "$fname*" 
+                                    --metrics="partial(precision_at_k, k=3); partial(precision_at_k, k=5); partial(precision_at_k, k=8); partial(precision_at_k, k=15)"
+# echo "files created:"
+# find .. -name "$fname*" 

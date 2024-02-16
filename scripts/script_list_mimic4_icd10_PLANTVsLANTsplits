@@ -1,0 +1,18 @@
+launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25_plant --plant --no_running_decoder --infer 1   
+launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25 --no_running_decoder --infer 1   
+launch_50_mimic4_icd10 --fname mimic4_icd10_clas_50_plant --plant --no_running_decoder --infer 1
+launch_50_mimic4_icd10 --fname mimic4_icd10_clas_50 --no_running_decoder --infer 1
+launch_165_mimic4_icd10 --fname mimic4_icd10_clas_165_plant --plant --no_running_decoder --infer 1
+launch_165_mimic4_icd10 --fname mimic4_icd10_clas_165 --no_running_decoder --infer 1
+launch_424_mimic4_icd10 --fname mimic4_icd10_clas_424_plant --plant --no_running_decoder --infer 1
+launch_424_mimic4_icd10 --fname mimic4_icd10_clas_424 --no_running_decoder --infer 1
+launch_1090_mimic4_icd10 --fname mimic4_icd10_clas_1090_plant --plant --no_running_decoder --infer 1
+launch_1090_mimic4_icd10 --fname mimic4_icd10_clas_1090 --no_running_decoder --infer 1
+launch_7203_mimic4_icd10 --fname mimic4_icd10_clas_7203_plant --plant --no_running_decoder --infer 1
+launch_7203_mimic4_icd10 --fname mimic4_icd10_clas_7203 --no_running_decoder --infer 1
+launch_18513_mimic4_icd10 --fname mimic4_icd10_clas_18513_plant --plant --no_running_decoder --infer 1
+launch_18513_mimic4_icd10 --fname mimic4_icd10_clas_18513 --no_running_decoder --infer 1
+launch_49579_mimic4_icd10 --fname mimic4_icd10_clas_49579_plant --plant --no_running_decoder --infer 1
+launch_49579_mimic4_icd10 --fname mimic4_icd10_clas_49579 --no_running_decoder --infer 1
+launch_complete_mimic4_icd10 --fname mimic4_icd10_clas_full_plant_experiment --plant --no_running_decoder --diff_inattn 80 --infer 1
+launch_complete_mimic4_icd10 --fname mimic4_icd10_clas_full --no_running_decoder --infer 1

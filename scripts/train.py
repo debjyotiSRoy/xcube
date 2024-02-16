@@ -401,7 +401,7 @@ def main(
             # learn.add_cb(RarePrecisionCallback(join_path_file(rarecodes_fname, source, ext='.pkl')))
             # setattr(learn.model[0], 'max_len', None)
             learn.metrics = [eval(o) for o in metrics.split(';') if callable(eval(o))]
-            dev_dl = get_dev_dl(source, data, bs, workers=workers, lm_vocab_file=files_lm[2], bwd=bwd)
+            # dev_dl = get_dev_dl(source, data, bs, workers=workers, lm_vocab_file=files_lm[2], bwd=bwd)
             try: 
                 learn = learn.load(learn.save_model.fname)
                 # validate(learn, dl=dev_dl)

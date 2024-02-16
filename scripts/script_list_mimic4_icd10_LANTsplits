@@ -1,0 +1,1 @@
+launch_25_mimic4_icd10 --fname mimic4_icd10_clas_25 --no_running_decoder --infer 1   

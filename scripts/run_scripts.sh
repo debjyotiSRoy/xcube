@@ -58,7 +58,7 @@ if [ "$infer" = true ]; then
 	# Create the output directory if it doesn't exist
 	output_dir=$(dirname "$output_file")
 	mkdir -p "$output_dir"
-    echo "Script, Loss, Precision_at_5, Precision_at_8, Precision_at_15, F1_Score_Macro, F1_Score_Micro" > "$output_file"
+    echo "Script, Loss, Precision_at_1, Precision_at_2, Precision_at_3, Precision_at_5, Recall_at_25, Recall_at_30, Recall_at_35, Recall_at_40, Recall_at_50" > "$output_file"
 	# fi
 fi
 
